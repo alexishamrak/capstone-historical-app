@@ -29,7 +29,7 @@ login = html.Div(children=[
 
 layout = html.Div(children=[
     dbc.Container(dbc.Row([dbc.Col(login)], align='center', style={'height': '100vh'})),
-], style={'background': '#009900'})
+], style={'background': '#246700'})
 
 ############################################### Callbacks ###############################################
 
