@@ -21,7 +21,7 @@ login = html.Div(children=[
                     html.Pre(),
                     dbc.Button('Login', color='success', id='login-btn', n_clicks=0, style={'width': '100%'}),
                 ]),
-                html.Div(id='redirect-from-login'),
+                html.Div(id='login-message'),
             ]
         )
     ], style={'width': '80%', 'margin': 'auto'}),
@@ -33,8 +33,9 @@ layout = html.Div(children=[
 
 ############################################### Callbacks ###############################################
 
-# page navigation
-@callback(Output('redirect-from-login', 'children'),
+# user authentication
+@callback(Output('user-authenticated', 'data'),
+          Output('login-message', 'children'),
           Input('login-btn', 'n_clicks'),
           State('input-username', 'value'),
           State('input-password', 'value'))
@@ -43,8 +44,8 @@ def update_page(n_clicks, username, password):
     if username == '' or username == None or password == '' or password == None:
         raise PreventUpdate()
     if username not in valid_users:
-        return html.P('Invalid Username.', style={'textAlign': 'center', 'fontWeight': 'bold'})
+        return False, html.P('Invalid Username.', style={'textAlign': 'center', 'fontWeight': 'bold'})
     if valid_users[username] == password:
-        return dcc.Location(pathname='/main', id='')
+        return True, html.P('Access Authenticated.', style={'textAlign': 'center', 'fontWeight': 'bold'})
     else:
-        return html.P('Incorrect Password.', style={'textAlign': 'center', 'fontWeight': 'bold'})
+        return False, html.P('Incorrect Password.', style={'textAlign': 'center', 'fontWeight': 'bold'})
