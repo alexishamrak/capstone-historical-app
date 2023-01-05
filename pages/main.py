@@ -48,11 +48,11 @@ header = html.Div(
         # Create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
-                {'label': ' Human Silhouette', 'value': 'Human Silhouette'},
-                {'label': ' Pie Graph', 'value': 'Pie Graph'},
-                {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
-                {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Box Plot', 'value': 'Box Plot'},
+                {'label': ' Bar Graph', 'value': 'Bar Graph'},
+                {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
+                {'label': ' Pie Graph', 'value': 'Pie Graph'},
+                {'label': ' Human Silhouette', 'value': 'Human Silhouette'},
             ], value=['Human Silhouette', 'Pie Graph'], id='checklist',
             inline=True, labelStyle={'color': 'white', 'float': 'right', 'marginRight': '1rem'}
         ),
