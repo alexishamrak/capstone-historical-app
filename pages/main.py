@@ -30,22 +30,22 @@ SIDEBAR_STYLE = {
 }
 
 CONTENT_STYLE = {
-    "position": "absolute",
+    "position": "absolute", # to enable scroll through the different visualizations
     "top": "7%",
     "left": "22%",
     "width": "77%",
     "height": "93%",
-    "overflowY": "scroll",
+    "overflowY": "scroll", # only want vertical scroll bar
     "backgroundColor": "white"
 }
 
-# Add components and styling to the different sections of the application
+# add components and styling to the different sections of the application
 header = html.Div(
     [
-        # Display application name on top left-hand corner
+        # display application name on top left-hand corner
         html.H3('JEJARD Analytics', style={'position': 'fixed', 'left': '1%', 'color': 'white'}),
         
-        # Create horizontal checklist for user to select which visualizations to display
+        # create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
                 {'label': ' Box Plot', 'value': 'Box Plot'},
@@ -62,8 +62,8 @@ header = html.Div(
 
 sidebar = html.Div(
     [
-        # Display patient information
-        # TODO: Automate this
+        # display patient information
+        # TODO: automate this
         html.H4('Patient Information', style={'position': 'fixed', 'left': '1%', 'top': '7%'}),
         html.P('Age: XX', style={'position': 'fixed', 'left': '2%', 'top': '12%'}),
         html.P('Weight: XX', style={'position': 'fixed', 'left': '2%', 'top': '15%'}),
@@ -74,13 +74,13 @@ sidebar = html.Div(
         html.Li('Anti Epileptic DEF', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
         html.P('Other Medical Diagnoses:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '36%'}),
         html.Li('XYZ', style={'position': 'fixed', 'left': '3%', 'top': '39%'}),
-        
     ],
     style=SIDEBAR_STYLE,
 )
 
 content = html.Div(
     [
+        # place each visualization inside a card (for neatness)
         dbc.Card(id='card1', children=dbc.CardBody(html.Div(id='graph1'))),
         html.Pre(),
         dbc.Card(id='card2', children=dbc.CardBody(html.Div(id='graph2'))),
@@ -98,7 +98,7 @@ layout = html.Div([header, sidebar, content])
 
 ############################################### Callbacks ###############################################
 
-# Output visualizations based on checklist options 
+# output visualizations based on checklist options 
 @callback(Output('card1', 'children'),
               Output('card2', 'children'),
               Output('card3', 'children'),
@@ -107,10 +107,12 @@ layout = html.Div([header, sidebar, content])
 			  Input('checklist', 'value'),
 )
 def display_page(checklist_options):
+    # initialize variables needed
     i = 0
     graphs = [[]] * 5
 
-    # Populating visualizations based on checklist options
+    # populating visualizations based on checklist options 
+    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plot
     # TODO: return graphs with data
     if 'Human Silhouette' in checklist_options:
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))

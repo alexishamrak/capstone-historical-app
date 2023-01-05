@@ -40,9 +40,12 @@ layout = html.Div(children=[
           State('input-username', 'value'),
           State('input-password', 'value'))
 def update_page(n_clicks, username, password):
+    # whitelist users
     valid_users = {'john.doe':'password123'}
+
+    # set storage container 'user-authenticated' for redirection if access granted and output message to user
     if username == '' or username == None or password == '' or password == None:
-        raise PreventUpdate()
+        raise PreventUpdate() # do nothing
     if username not in valid_users:
         return False, html.P('Invalid Username.', style={'textAlign': 'center', 'fontWeight': 'bold'})
     if valid_users[username] == password:
