@@ -46,8 +46,6 @@ header = html.Div(
         html.H3('JEJARD Analytics', style={'position': 'fixed', 'left': '1%', 'color': 'white'}),
         
         # Create horizontal checklist for user to select which visualizations to display
-        # TODO: Create tooltip
-        # TODO: Link graphs with checklist
         dcc.Checklist(
             options=[
                 {'label': 'Human Silhouette', 'value': 'Human Silhouette'},
@@ -83,35 +81,15 @@ sidebar = html.Div(
 
 content = html.Div(
     [
-        dbc.Card(
-            dbc.CardBody(
-                html.Div(id='human-silhouette', children=dcc.Graph(figure=make_subplots(rows=1, cols=1))),
-            )
-        ),
+        dbc.Card(id='card1', children=dbc.CardBody(html.Div(id='graph1'))),
         html.Pre(),
-        dbc.Card(
-            dbc.CardBody(
-                html.Div(id='pie-chart', children=dcc.Graph(figure=make_subplots(rows=1, cols=2))),
-            )
-        ),
+        dbc.Card(id='card2', children=dbc.CardBody(html.Div(id='graph2'))),
         html.Pre(),
-        dbc.Card(
-            dbc.CardBody(
-                html.Div(id='bar-chart', children=dcc.Graph(figure=make_subplots(rows=1, cols=2))),
-            )
-        ),
+        dbc.Card(id='card3', children=dbc.CardBody(html.Div(id='graph3'))),
         html.Pre(),
-        dbc.Card(
-            dbc.CardBody(
-                html.Div(id='scatter-chart', children=dcc.Graph(figure=make_subplots(rows=1, cols=2))),
-            )
-        ),
+        dbc.Card(id='card4', children=dbc.CardBody(html.Div(id='graph4'))),
         html.Pre(),
-        dbc.Card(
-            dbc.CardBody(
-                html.Div(id='box-plot', children=dcc.Graph(figure=make_subplots(rows=1, cols=1))),
-            )
-        ),
+        dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
     ],
     style=CONTENT_STYLE
 )
@@ -119,3 +97,33 @@ content = html.Div(
 layout = html.Div([header, sidebar, content])
 
 ############################################### Callbacks ###############################################
+
+# Output visualizations based on checklist options 
+@callback(Output('card1', 'children'),
+              Output('card2', 'children'),
+              Output('card3', 'children'),
+              Output('card4', 'children'),
+              Output('card5', 'children'),
+			  Input('checklist', 'value'),
+)
+def display_page(checklist_options):
+    i = 0
+    graphs = [[]] * 5
+
+    # Populating visualizations based on checklist options
+    # TODO: return graphs with data
+    if 'Human Silhouette' in checklist_options:
+        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+        i += 1
+    if 'Pie Graph' in checklist_options:
+        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
+        i += 1
+    if 'Scatter Plot' in checklist_options:
+        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
+        i += 1
+    if 'Bar Graph' in checklist_options:
+        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
+        i += 1
+    if 'Box Plot' in checklist_options:
+        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4]
