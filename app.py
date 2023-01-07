@@ -14,6 +14,7 @@ app.layout = html.Div([
 	dash.page_container,
 ])
 
+
 # prevent unauthorized users from accessing main page
 @app.callback(Output('page-content', 'children'),
 			  Input('user-authenticated', 'data'),
