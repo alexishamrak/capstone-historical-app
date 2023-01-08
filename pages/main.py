@@ -139,24 +139,12 @@ def filter_data(x_data, y_data, z_data):
     return x_hat, y_hat, z_hat
 
 
-# function for calculating the magnitude ratio
-def magnitude_ratio(paretic_mag, non_paretic_mag):
-    mag_ratio = np.log(np.sum(paretic_mag)) / np.log(np.sum(non_paretic_mag))
-    return mag_ratio
-
-
-# function for converting the count magnitude array to binary
-def converting_2binary(count_mag):
-    mag_len = len(count_mag)
-    count = sum(i >= 2 for i in count_mag)
-    return count, mag_len
-
-
-# function for calculating the paretic/non-paretic limb use ratio
-def use_ratio(paretic_count_mag, non_paretic_count_mag, paretic_bin_len, non_paretic_bin_len, epoch):
-    use_ratio_calc = paretic_count_mag / non_paretic_count_mag
-    paretic_limb_use = (paretic_count_mag / paretic_bin_len) * epoch
-    non_paretic_limb_use = (non_paretic_count_mag / non_paretic_bin_len) * epoch
+def use_ratio(paretic_count_mag, non_paretic_count_mag, epoch):
+    paretic_count = sum(i >= 2 for i in paretic_count_mag)
+    non_paretic_count = sum(i >= 2 for i in non_paretic_count_mag)
+    use_ratio_calc = paretic_count / non_paretic_count
+    paretic_limb_use = (paretic_count / len(paretic_count_mag)) * epoch
+    non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * epoch
     return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
 
 
@@ -211,24 +199,11 @@ def preprocessing(url_pathname):
     # ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
     # rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
 
-    # hand_mag_ratio = magnitude_ratio(lh_mag_bin, rh_mag_bin)
-    hand_mag_ratio = magnitude_ratio(lh_count_mag, rh_count_mag)
-    # print(f"Magnitude ratio between hands is: {hand_mag_ratio}")
-    # leg_mag_ratio = magnitude_ratio(ll_mag_bin, rl_mag_bin)
-    # print(f"Magnitude ratio between legs is: {leg_mag_ratio}")
-
-    lh_count, lh_bin_len = converting_2binary(lh_count_mag)
-    rh_count, rh_bin_len = converting_2binary(rh_count_mag)
-    # ll_count, ll_bin_len = converting_countmag2binary(ll_count_mag)
-    # rl_count, rl_bin_len = converting_countmag2binary(rl_count_mag)
-
-    hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count, rh_count, lh_bin_len,
-                                                                           rh_bin_len, epoch)
+    hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, epoch)
     # print(f"Use ratio between hands is: {hand_use_ratio}")
     # print(f"Hand paretic limb use is: {h_paretic_limb_use}")
     # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
-    # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count, rl_count, ll_bin_len,
-    #                                                                          rl_bin_len, epoch)
+    # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, epoch)
     # print(f"Use ratio between legs is: {leg_use_ratio}")
     # print(f"Leg paretic limb use is: {l_paretic_limb_use}")
     # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
@@ -243,12 +218,12 @@ def preprocessing(url_pathname):
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
-    data = {'Right Hand': [h_non_paretic_limb_use, hand_mag_ratio, hand_use_ratio, bilateral_hand_mag],
-            'Left Hand': [h_paretic_limb_use, hand_mag_ratio, hand_use_ratio, bilateral_hand_mag],
-            'Right Leg': ['null', 'null', 'null', 'null'],
-            'Left Leg': ['null', 'null', 'null', 'null']}
+    data = {'Right Hand': [h_non_paretic_limb_use, hand_use_ratio, bilateral_hand_mag],
+            'Left Hand': [h_paretic_limb_use, hand_use_ratio, bilateral_hand_mag],
+            'Right Leg': ['null', 'null', 'null'],
+            'Left Leg': ['null', 'null', 'null']}
 
-    df = pd.DataFrame(data, index=['Limb Use', 'Magnitude Ratio', 'Use Ratio', 'Bilateral Magnitude'])
+    df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude'])
     # print(df)
     df = df.to_json()
     return df
