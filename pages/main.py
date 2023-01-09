@@ -190,6 +190,7 @@ def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
 
 ############################################### Callbacks ###############################################
 
+# TODO: may need to change the input
 # preprocessing data
 # return a dataframe, or put in a list if that doesn't work
 @callback(Output('filter-data', 'data'),
@@ -200,10 +201,6 @@ def preprocessing(url_pathname):
     right_hand = pd.read_csv('assets/right_hand_hm.csv')
     # left_leg = pd.read_csv('Assets/left_leg_lm.csv')
     # right_leg = pd.read_csv('Assets/right_leg_hm.csv')
-
-    # create two arrays with data
-    first_index_array = [0]
-    last_index_array = []
 
     freq = 50
     epoch = 1
@@ -216,8 +213,9 @@ def preprocessing(url_pathname):
     # should be changed to 3600s
     time_interval = 60
 
-    lh_last_index, lh_first_index, l_final_time = get_first_last_index(lh_time, time_interval)
-    rh_last_index, rh_first_index, r_final_time = get_first_last_index(rh_time, time_interval)
+    # TODO: simplify function below to assume all limb datasets will be over the same amount of time
+    lh_last_index, lh_first_index, final_time = get_first_last_index(lh_time, time_interval)
+    # rh_last_index, rh_first_index, final_time = get_first_last_index(rh_time, time_interval)
     # ll_last_index, ll_first_index = get_first_last_index(ll_time, time_interval)
     # rl_last_index, rl_first_index = get_first_last_index(rl_time, time_interval)
 
@@ -225,11 +223,6 @@ def preprocessing(url_pathname):
     rh_x_hat, rh_y_hat, rh_z_hat = filter_data(rh_x, rh_y, rh_z)
     # ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
     # rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
-
-    # for j in range(4):
-    limb_final_index = [len(lh_last_index)-1, len(rh_last_index)-1]
-        # len(ll_last_index) - 1, len(rl_last_index) - 1 (add in once we have leg data)
-    # this for loop is assuming all limb datasets will be the same length
 
     h_non_paretic_limb_use_final = []
     hand_use_ratio_final = []
@@ -241,16 +234,10 @@ def preprocessing(url_pathname):
         # ll_counts, ll_count_mag = collecting_counts(ll_raw)
         # rl_counts, rl_count_mag = collecting_counts(rl_raw)
 
-
         # assuming left and right time is the same
-        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, l_final_time)
-        # print(f"Use ratio between hands is: {hand_use_ratio}")
-        # print(f"Hand paretic limb use is: {h_paretic_limb_use}")
-        # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
-        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, epoch)
-        # print(f"Use ratio between legs is: {leg_use_ratio}")
-        # print(f"Leg paretic limb use is: {l_paretic_limb_use}")
-        # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
+        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, final_time)
+        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag,
+        # final_time)
 
         # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
         # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
@@ -272,10 +259,7 @@ def preprocessing(url_pathname):
             'Right Leg': ['null', 'null', 'null'],
             'Left Leg': ['null', 'null', 'null']}
 
-    df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude'])
-    df.to_csv('output.csv')
-    df = df.to_json()
-    # print(df)
+    df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude']).to_json()
     return df
 
 
