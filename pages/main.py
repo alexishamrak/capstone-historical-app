@@ -117,6 +117,23 @@ def sorting_data(dataset):
     raw = np.array(raw)
     return time, x, y, z, raw
 
+# TODO: should simplify once we can verify that data will be at the same time
+# function to fill array with last index and first index values of time segments
+def get_first_last_index(time_array, time_interval):
+    count = time_interval
+    final_time = np.max(time_array)
+
+    last_index_array = []
+    first_index_array = [0]
+
+    while (count + time_interval) < final_time:
+        last_index_array.append(np.max(np.where(time_array[time_array < count])))
+        first_index_array.append(np.max(np.where(time_array[time_array <= count])))
+        count = count + time_interval
+
+    last_index_array.append(len(time_array) - 1)
+    return last_index_array, first_index_array, final_time
+
 
 # function for calculating the number of activity counts
 def collecting_counts(raw_data, freq, epoch):
@@ -154,17 +171,20 @@ def calc_mag(x_filt, y_filt, z_filt):
 
 
 def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
-    left_len = len(left_time)
-    right_len = len(right_time)
-
-    if left_len > right_len:
-        length = right_len
-        leftside_mag = leftside_mag[0:length]
+    # merge time and magnitude datasets for left and right limb
+    left = np.transpose(np.vstack((left_time, leftside_mag)))
+    right = np.transpose(np.vstack((right_time, rightside_mag)))
+    # convert dataset into a Pandas Dataframe and add column names
+    leftside_mag_df = pd.DataFrame(left, columns=['time', 'left_mag'])
+    rightside_mag_df = pd.DataFrame(right, columns=['time', 'right_mag'])
+    # merge datasets based on time column
+    if len(left_time) > len(right_time):
+        merged_dataset = leftside_mag_df.merge(rightside_mag_df, on='time', how='left')
     else:
-        length = left_len
-        rightside_mag = rightside_mag[0:length]
+        merged_dataset = rightside_mag_df.merge(leftside_mag_df, on='time', how='left')
 
-    bilat_mag = leftside_mag + rightside_mag
+    bilat_mag = np.nansum([merged_dataset['left_mag'], merged_dataset['right_mag']], axis=0)
+
     return bilat_mag
 
 
@@ -181,51 +201,81 @@ def preprocessing(url_pathname):
     # left_leg = pd.read_csv('Assets/left_leg_lm.csv')
     # right_leg = pd.read_csv('Assets/right_leg_hm.csv')
 
+    # create two arrays with data
+    first_index_array = [0]
+    last_index_array = []
+
     freq = 50
-    epoch = 10
+    epoch = 1
 
     lh_time, lh_x, lh_y, lh_z, lh_raw = sorting_data(left_hand)
     rh_time, rh_x, rh_y, rh_z, rh_raw = sorting_data(right_hand)
     # ll_time, ll_X, ll_Y, ll_Z, ll_raw = sorting_data(left_leg)
     # rl_time, rl_X, rl_Y, rl_Z, rl_raw = sorting_data(right_leg)
 
-    lh_counts, lh_count_mag = collecting_counts(lh_raw, freq, epoch)
-    rh_counts, rh_count_mag = collecting_counts(rh_raw, freq, epoch)
-    # ll_counts, ll_count_mag = collecting_counts(ll_raw)
-    # rl_counts, rl_count_mag = collecting_counts(rl_raw)
+    # should be changed to 3600s
+    time_interval = 60
+
+    lh_last_index, lh_first_index, l_final_time = get_first_last_index(lh_time, time_interval)
+    rh_last_index, rh_first_index, r_final_time = get_first_last_index(rh_time, time_interval)
+    # ll_last_index, ll_first_index = get_first_last_index(ll_time, time_interval)
+    # rl_last_index, rl_first_index = get_first_last_index(rl_time, time_interval)
 
     lh_x_hat, lh_y_hat, lh_z_hat = filter_data(lh_x, lh_y, lh_z)
     rh_x_hat, rh_y_hat, rh_z_hat = filter_data(rh_x, rh_y, rh_z)
     # ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
     # rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
 
-    hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, epoch)
-    # print(f"Use ratio between hands is: {hand_use_ratio}")
-    # print(f"Hand paretic limb use is: {h_paretic_limb_use}")
-    # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
-    # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, epoch)
-    # print(f"Use ratio between legs is: {leg_use_ratio}")
-    # print(f"Leg paretic limb use is: {l_paretic_limb_use}")
-    # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
+    # for j in range(4):
+    limb_final_index = [len(lh_last_index)-1, len(rh_last_index)-1]
+        # len(ll_last_index) - 1, len(rl_last_index) - 1 (add in once we have leg data)
+    # this for loop is assuming all limb datasets will be the same length
+
+    h_non_paretic_limb_use_final = []
+    hand_use_ratio_final = []
+    h_paretic_limb_use_final = []
+
+    for i in range(len(lh_last_index)):
+        lh_counts, lh_count_mag = collecting_counts(lh_raw[lh_first_index[i]:lh_last_index[i]], freq, epoch)
+        rh_counts, rh_count_mag = collecting_counts(rh_raw[lh_first_index[i]:lh_last_index[i]], freq, epoch)
+        # ll_counts, ll_count_mag = collecting_counts(ll_raw)
+        # rl_counts, rl_count_mag = collecting_counts(rl_raw)
+
+
+        # assuming left and right time is the same
+        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, l_final_time)
+        # print(f"Use ratio between hands is: {hand_use_ratio}")
+        # print(f"Hand paretic limb use is: {h_paretic_limb_use}")
+        # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
+        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, epoch)
+        # print(f"Use ratio between legs is: {leg_use_ratio}")
+        # print(f"Leg paretic limb use is: {l_paretic_limb_use}")
+        # print(f"Leg non-paretic limb use is: {h_non_paretic_limb_use}")
+
+        # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
+        # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
+
+        h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
+        hand_use_ratio_final.append(hand_use_ratio)
+        h_paretic_limb_use_final.append(h_paretic_limb_use)
 
     lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
     rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
-    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
 
     bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
     # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
-    data = {'Right Hand': [h_non_paretic_limb_use, hand_use_ratio, bilateral_hand_mag],
-            'Left Hand': [h_paretic_limb_use, hand_use_ratio, bilateral_hand_mag],
+    data = {'Right Hand': [h_non_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
+            'Left Hand': [h_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
             'Right Leg': ['null', 'null', 'null'],
             'Left Leg': ['null', 'null', 'null']}
 
     df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude'])
-    # print(df)
+    df.to_csv('output.csv')
     df = df.to_json()
+    # print(df)
     return df
 
 
