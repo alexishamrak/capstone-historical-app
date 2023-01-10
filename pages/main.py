@@ -139,12 +139,12 @@ def filter_data(x_data, y_data, z_data):
     return x_hat, y_hat, z_hat
 
 
-def use_ratio(paretic_count_mag, non_paretic_count_mag, epoch):
+def use_ratio(paretic_count_mag, non_paretic_count_mag, final_time):
     paretic_count = sum(i >= 2 for i in paretic_count_mag)
     non_paretic_count = sum(i >= 2 for i in non_paretic_count_mag)
     use_ratio_calc = paretic_count / non_paretic_count
-    paretic_limb_use = (paretic_count / len(paretic_count_mag)) * epoch
-    non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * epoch
+    paretic_limb_use = (paretic_count / len(paretic_count_mag)) * final_time
+    non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * final_time
     return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
 
 
@@ -193,11 +193,11 @@ def preprocessing(url_pathname):
     # ll_time, ll_X, ll_Y, ll_Z, ll_raw = sorting_data(left_leg)
     # rl_time, rl_X, rl_Y, rl_Z, rl_raw = sorting_data(right_leg)
 
-    # should be changed to 3600s
-    time_interval = 60
+    # creating arrays to store the start and end indices of time segments
+    time_interval = 60  # should be changed to 3600s
     last_index_array = []
     first_index_array = [0]
-    final_time = np.max(lh_time)
+    final_time = np.max(lh_time)    # assuming lh_time and rh_time are the same since the raspberry pi can ensure this
     iteration = int(np.floor(final_time/time_interval))
     data_spacing = np.max(np.where(lh_time[lh_time < time_interval]))
 
