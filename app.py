@@ -21,9 +21,10 @@ app.layout = html.Div([
 			  State('url', 'pathname'),
 )
 def display_page(user_authenticated, pathname):
+	# if access granted to user, redirect to main page
+	# otherwise, stay on login page
 	if pathname == '/main' and not user_authenticated:
 		return dcc.Location(pathname='/', id='')
-
 	if user_authenticated:
 		if pathname == '/':
 			return dcc.Location(pathname='/main', id='')

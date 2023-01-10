@@ -47,7 +47,6 @@ header = html.Div(
     [
         # display application name on top left-hand corner
         html.H3('JEJARD Analytics', style={'position': 'fixed', 'left': '1%', 'color': 'white'}),
-
         # create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
@@ -99,6 +98,7 @@ content = html.Div(
 )
 
 layout = html.Div([header, sidebar, content])
+
 
 #################################### functions ###############################################################
 
@@ -260,7 +260,6 @@ def preprocessing(url_pathname):
           Output('card5', 'children'),
           Input('checklist', 'value'))
 
-
 def display_page(checklist_options):
     # initialize variables needed
     i = 0
@@ -283,5 +282,5 @@ def display_page(checklist_options):
         i += 1
     if 'Box Plot' in checklist_options:
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
-    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4]
 
+    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4]
