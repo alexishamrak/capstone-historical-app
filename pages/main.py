@@ -117,23 +117,6 @@ def sorting_data(dataset):
     raw = np.array(raw)
     return time, x, y, z, raw
 
-# TODO: should simplify once we can verify that data will be at the same time
-# function to fill array with last index and first index values of time segments
-def get_first_last_index(time_array, time_interval):
-    count = time_interval
-    final_time = np.max(time_array)
-
-    last_index_array = []
-    first_index_array = [0]
-
-    while (count + time_interval) < final_time:
-        last_index_array.append(np.max(np.where(time_array[time_array < count])))
-        first_index_array.append(np.max(np.where(time_array[time_array <= count])))
-        count = count + time_interval
-
-    last_index_array.append(len(time_array) - 1)
-    return last_index_array, first_index_array, final_time
-
 
 # function for calculating the number of activity counts
 def collecting_counts(raw_data, freq, epoch):
@@ -212,12 +195,18 @@ def preprocessing(url_pathname):
 
     # should be changed to 3600s
     time_interval = 60
+    last_index_array = []
+    first_index_array = [0]
+    final_time = np.max(lh_time)
+    iteration = int(np.floor(final_time/time_interval))
+    data_spacing = np.max(np.where(lh_time[lh_time < time_interval]))
 
-    # TODO: simplify function below to assume all limb datasets will be over the same amount of time
-    lh_last_index, lh_first_index, final_time = get_first_last_index(lh_time, time_interval)
-    # rh_last_index, rh_first_index, final_time = get_first_last_index(rh_time, time_interval)
-    # ll_last_index, ll_first_index = get_first_last_index(ll_time, time_interval)
-    # rl_last_index, rl_first_index = get_first_last_index(rl_time, time_interval)
+    for i in range(iteration):
+        val = data_spacing * (i + 1)
+        last_index_array.append(val)
+        first_index_array.append(val + 1)
+
+    last_index_array.append(len(lh_time) - 1)
 
     lh_x_hat, lh_y_hat, lh_z_hat = filter_data(lh_x, lh_y, lh_z)
     rh_x_hat, rh_y_hat, rh_z_hat = filter_data(rh_x, rh_y, rh_z)
@@ -228,9 +217,9 @@ def preprocessing(url_pathname):
     hand_use_ratio_final = []
     h_paretic_limb_use_final = []
 
-    for i in range(len(lh_last_index)):
-        lh_counts, lh_count_mag = collecting_counts(lh_raw[lh_first_index[i]:lh_last_index[i]], freq, epoch)
-        rh_counts, rh_count_mag = collecting_counts(rh_raw[lh_first_index[i]:lh_last_index[i]], freq, epoch)
+    for i in range(len(last_index_array)):
+        lh_counts, lh_count_mag = collecting_counts(lh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
+        rh_counts, rh_count_mag = collecting_counts(rh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
         # ll_counts, ll_count_mag = collecting_counts(ll_raw)
         # rl_counts, rl_count_mag = collecting_counts(rl_raw)
 
