@@ -9,6 +9,7 @@ import dash_bootstrap_components as dbc
 from plotly.subplots import make_subplots
 import scipy.signal
 from agcounts.extract import get_counts
+import plotly.express as px
 
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
@@ -244,10 +245,16 @@ def preprocessing(url_pathname):
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
+    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='bilateral_magnitude') # TODO: add 'bilateral_leg_mag' 
+    region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
+    bilat_temp = pd.DataFrame(bilateral_mag_merge)
+    bilateral_mag_df = bilat_temp.join(region)
+    print(bilateral_mag_merge.median())
+
     # TODO: pass in data for legs
     data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
-    return df, pd.DataFrame(bilateral_hand_mag, columns=['Bilateral Hand Mag']).to_dict('records') 
+    return df, bilateral_mag_df.to_dict('records') 
 
 
 # output visualizations based on checklist options
@@ -285,6 +292,7 @@ def display_page(checklist_options, data, bilat_mag):
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
         i += 1
     if 'Box Plot' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+        boxplot = px.box(bilat_mag, x="region_of_body", y="bilateral_magnitude") 
+        graphs[i] = dcc.Graph(figure=boxplot)
 
     return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4]
