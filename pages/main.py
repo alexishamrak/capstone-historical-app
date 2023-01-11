@@ -174,9 +174,7 @@ def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
 
 ############################################### Callbacks ###############################################
 
-# TODO: may need to change the input
-# preprocessing data
-# return a dataframe, or put in a list if that doesn't work
+# preprocess data
 @callback(Output('filter-data', 'data'),
           Output('bilateral-mag', 'data'),
           Input('url', 'pathname'))
@@ -227,11 +225,7 @@ def preprocessing(url_pathname):
 
         # assuming left and right time is the same
         hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, final_time)
-        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag,
-        # final_time)
-
-        # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-        # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
+        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
 
         h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
         hand_use_ratio_final.append(hand_use_ratio)
@@ -239,6 +233,8 @@ def preprocessing(url_pathname):
 
     lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
     rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
+    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
+    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
 
     bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
     # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
@@ -249,7 +245,6 @@ def preprocessing(url_pathname):
     region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
     bilat_temp = pd.DataFrame(bilateral_mag_merge)
     bilateral_mag_df = bilat_temp.join(region)
-    print(bilateral_mag_merge.median())
 
     # TODO: pass in data for legs
     data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
