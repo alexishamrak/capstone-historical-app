@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 import scipy.signal
 from agcounts.extract import get_counts
 
-
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
 
@@ -92,7 +91,8 @@ content = html.Div(
         dbc.Card(id='card4', children=dbc.CardBody(html.Div(id='graph4'))),
         html.Pre(),
         dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
-        dcc.Store(id='filter-data', storage_type='session')
+        dcc.Store(id='filter-data', storage_type='session'),
+        dcc.Store(id='bilateral-mag', storage_type='session')
     ],
     style=CONTENT_STYLE
 )
@@ -177,6 +177,7 @@ def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
 # preprocessing data
 # return a dataframe, or put in a list if that doesn't work
 @callback(Output('filter-data', 'data'),
+          Output('bilateral-mag', 'data'),
           Input('url', 'pathname'))
 
 def preprocessing(url_pathname):
@@ -243,13 +244,10 @@ def preprocessing(url_pathname):
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
-    data = {'Right Hand': [h_non_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
-            'Left Hand': [h_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
-            'Right Leg': ['null', 'null', 'null'],
-            'Left Leg': ['null', 'null', 'null']}
-
-    df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude']).to_json()
-    return df
+    # TODO: pass in data for legs
+    data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
+    return df, pd.DataFrame(bilateral_hand_mag, columns=['Bilateral Hand Mag']).to_dict('records') 
 
 
 # output visualizations based on checklist options
@@ -258,12 +256,18 @@ def preprocessing(url_pathname):
           Output('card3', 'children'),
           Output('card4', 'children'),
           Output('card5', 'children'),
-          Input('checklist', 'value'))
-
-def display_page(checklist_options):
+          Input('checklist', 'value'),
+          State('filter-data', 'data'),
+          State('bilateral-mag', 'data')
+)
+def display_page(checklist_options, data, bilat_mag):
     # initialize variables needed
     i = 0
     graphs = [[]] * 5
+    data = pd.DataFrame(data) 
+    bilat_mag = pd.DataFrame(bilat_mag)
+
+    # TODO: Find way to differentiate paretic vs nonparetic limb (for now, assume left side of body is paretic) 
 
     # populating visualizations based on checklist options
     # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plot
