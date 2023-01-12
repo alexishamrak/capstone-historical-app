@@ -10,6 +10,8 @@ from plotly.subplots import make_subplots
 import scipy.signal
 from agcounts.extract import get_counts
 import plotly.express as px
+import plotly.graph_objects as go
+
 
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
@@ -282,14 +284,75 @@ def display_page(checklist_options, data, bilat_mag):
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
         i += 1
     if 'Pie Graph' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
-        i += 1
+
+        lh_paretic_limb_use = data['Limb Use LH']
+        lh_paretic_limb_use = np.array(lh_paretic_limb_use)
+        rh_non_paretic_limb_use = data['Limb Use RH']
+        rh_non_paretic_limb_use = np.array(rh_non_paretic_limb_use)
+        total_limb_use = lh_paretic_limb_use + rh_non_paretic_limb_use
+
+        lh_paretic_limb_time = (lh_paretic_limb_use/total_limb_use)*100
+        rh_non_paretic_limb_time = (rh_non_paretic_limb_use/total_limb_use)*100
+
+        labels = ['Paretic', 'Non-paretic']
+
+        # TODO: Will have to change depending on subplot size for full data
+        N = 2
+        M = 3
+
+        # TODO: will have to populate specs with size of full data
+        specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
+        pie_graph = make_subplots(rows=N, cols=M, specs=specs)
+
+        row = 1
+        column = 1
+
+        for i in range(len(lh_paretic_limb_time)):
+            pie_graph.add_trace(go.Pie(labels=labels, values=[lh_paretic_limb_time[i], rh_non_paretic_limb_time[i]], 
+            name=i), row, column)
+            if i >= N and row < N:
+                row = row + 1
+            if column < M:
+                column = column + 1
+            if i == N:
+                column = 1
+
+        pie_graph.update(layout_title_text='Paretic and Non-Paretic Limb Use')
+        graphs[i] = dcc.Graph(figure=pie_graph)
+
     if 'Scatter Plot' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
-        i += 1
+        
+        use_ratio_v = data['Use Ratio U']
+
+        num_dots = len(use_ratio_v) + 1
+        ind = np.arange(1, num_dots) 
+        # TODO: adjust ylim and add horizontal lines to legend
+        scatter_plot = px.scatter(x=ind, y=use_ratio_v)
+        scatter_plot.update_traces(marker_size=12)
+        scatter_plot.add_hline(y=0.79, line_dash="dash", line_color="red")
+        scatter_plot.add_hline(y=1.1, line_dash="dash", line_color="red")
+
+        scatter_plot.update_layout(title_text="Use ratio relative to typical range", 
+        xaxis_title="Hours",  yaxis_title="Use Ratio")
+
+        graphs[i] = dcc.Graph(figure=scatter_plot)
+
     if 'Bar Graph' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
-        i += 1
+
+        lh_paretic_limb_use = data['Limb Use LH']
+        rh_non_paretic_limb_use = data['Limb Use RH']
+        # ASSUMPTION: vector length of right and left hand are the same
+        num_bars = len(lh_paretic_limb_use) + 1
+        ind = np.arange(1, num_bars)
+
+        bar_graph = go.Figure(data=[go.Bar(name='Non-paretic', x=ind, y=rh_non_paretic_limb_use), 
+        go.Bar(name='Paretic', x=ind, y=lh_paretic_limb_use)])
+        # Change the bar mode
+        bar_graph.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Limbs', 
+         xaxis_title="Hours",  yaxis_title="Activity Count")
+
+        graphs[i] = dcc.Graph(figure=bar_graph)
+
     if 'Box Plots' in checklist_options:
         # TODO: find columns containing data about the paretic limb(s) - assume LH ONLY for right now
 
