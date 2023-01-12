@@ -199,7 +199,7 @@ def preprocessing(url_pathname):
     time_interval = 60  # should be changed to 3600s
     last_index_array = []
     first_index_array = [0]
-    final_time = np.max(lh_time)    # assuming lh_time and rh_time are the same since the raspberry pi can ensure this
+    final_time = np.max(lh_time) # ASSUMPTION: lh_time and rh_time are the same (raspberry pi can ensure this)
     iteration = int(np.floor(final_time/time_interval))
     data_spacing = np.max(np.where(lh_time[lh_time < time_interval]))
 
@@ -225,7 +225,7 @@ def preprocessing(url_pathname):
         # ll_counts, ll_count_mag = collecting_counts(ll_raw)
         # rl_counts, rl_count_mag = collecting_counts(rl_raw)
 
-        # assuming left and right time is the same
+        # ASSUMPTION: left and right time is the same
         hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, final_time)
         # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
 
@@ -243,6 +243,7 @@ def preprocessing(url_pathname):
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
+    # create dataframe for bilateral magnitude (for boxplots)
     bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='bilateral_magnitude') # TODO: add 'bilateral_leg_mag' 
     region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
     bilat_temp = pd.DataFrame(bilateral_mag_merge)
