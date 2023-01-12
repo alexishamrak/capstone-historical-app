@@ -9,7 +9,7 @@ import dash_bootstrap_components as dbc
 from plotly.subplots import make_subplots
 import scipy.signal
 from agcounts.extract import get_counts
-
+import plotly.express as px
 
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
@@ -50,7 +50,7 @@ header = html.Div(
         # create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
-                {'label': ' Box Plot', 'value': 'Box Plot'},
+                {'label': ' Box Plots', 'value': 'Box Plots'},
                 {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
                 {'label': ' Pie Graph', 'value': 'Pie Graph'},
@@ -92,7 +92,10 @@ content = html.Div(
         dbc.Card(id='card4', children=dbc.CardBody(html.Div(id='graph4'))),
         html.Pre(),
         dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
-        dcc.Store(id='filter-data', storage_type='session')
+        html.Pre(),
+        dbc.Card(id='card6', children=dbc.CardBody(html.Div(id='graph6'))),
+        dcc.Store(id='filter-data', storage_type='session'),
+        dcc.Store(id='bilateral-mag', storage_type='session')
     ],
     style=CONTENT_STYLE
 )
@@ -173,10 +176,9 @@ def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
 
 ############################################### Callbacks ###############################################
 
-# TODO: may need to change the input
-# preprocessing data
-# return a dataframe, or put in a list if that doesn't work
+# preprocess data
 @callback(Output('filter-data', 'data'),
+          Output('bilateral-mag', 'data'),
           Input('url', 'pathname'))
 
 def preprocessing(url_pathname):
@@ -197,7 +199,7 @@ def preprocessing(url_pathname):
     time_interval = 60  # should be changed to 3600s
     last_index_array = []
     first_index_array = [0]
-    final_time = np.max(lh_time)    # assuming lh_time and rh_time are the same since the raspberry pi can ensure this
+    final_time = np.max(lh_time) # ASSUMPTION: lh_time and rh_time are the same (raspberry pi can ensure this)
     iteration = int(np.floor(final_time/time_interval))
     data_spacing = np.max(np.where(lh_time[lh_time < time_interval]))
 
@@ -223,13 +225,9 @@ def preprocessing(url_pathname):
         # ll_counts, ll_count_mag = collecting_counts(ll_raw)
         # rl_counts, rl_count_mag = collecting_counts(rl_raw)
 
-        # assuming left and right time is the same
+        # ASSUMPTION: left and right time is the same
         hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, final_time)
-        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag,
-        # final_time)
-
-        # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-        # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
+        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
 
         h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
         hand_use_ratio_final.append(hand_use_ratio)
@@ -237,19 +235,24 @@ def preprocessing(url_pathname):
 
     lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
     rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
+    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
+    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
 
     bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
     # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
     # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
-    data = {'Right Hand': [h_non_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
-            'Left Hand': [h_paretic_limb_use_final, hand_use_ratio_final, bilateral_hand_mag],
-            'Right Leg': ['null', 'null', 'null'],
-            'Left Leg': ['null', 'null', 'null']}
+    # create dataframe for bilateral magnitude (for boxplots)
+    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='bilateral_magnitude') # TODO: add 'bilateral_leg_mag' 
+    region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
+    bilat_temp = pd.DataFrame(bilateral_mag_merge)
+    bilateral_mag_df = bilat_temp.join(region)
 
-    df = pd.DataFrame(data, index=['Limb Use', 'Use Ratio', 'Bilateral Magnitude']).to_json()
-    return df
+    # TODO: pass in data for legs
+    data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
+    return df, bilateral_mag_df.to_dict('records') 
 
 
 # output visualizations based on checklist options
@@ -258,12 +261,19 @@ def preprocessing(url_pathname):
           Output('card3', 'children'),
           Output('card4', 'children'),
           Output('card5', 'children'),
-          Input('checklist', 'value'))
-
-def display_page(checklist_options):
+          Output('card6', 'children'),
+          Input('checklist', 'value'),
+          State('filter-data', 'data'),
+          State('bilateral-mag', 'data')
+)
+def display_page(checklist_options, data, bilat_mag):
     # initialize variables needed
     i = 0
-    graphs = [[]] * 5
+    graphs = [[]] * 6
+    data = pd.DataFrame(data) 
+    bilat_mag = pd.DataFrame(bilat_mag)
+
+    # TODO: Find way to differentiate paretic vs nonparetic limb (for now, assume left side of body is paretic) 
 
     # populating visualizations based on checklist options
     # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plot
@@ -280,7 +290,22 @@ def display_page(checklist_options):
     if 'Bar Graph' in checklist_options:
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
         i += 1
-    if 'Box Plot' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+    if 'Box Plots' in checklist_options:
+        # TODO: find columns containing data about the paretic limb(s) - assume LH ONLY for right now
 
-    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4]
+        # creating paretic limb acceleration dataset for boxplots
+        num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
+        paretic_limbs_merge = pd.Series(data['Limb Use LH'], name='paretic_acceleration') # TODO: add 'Limb Use LL'
+        region = pd.Series(["Paretic Arm"] * num_datapoints, name='region_of_body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
+        paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
+        paretic_acc_boxplot_df = paretic_acc_temp.join(region)
+
+        # plot boxplots for paretic limb acceleration
+        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="region_of_body", y="paretic_acceleration") 
+        graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
+
+        # plot boxplots for bilateral magnitude
+        bilat_mag_boxplot = px.box(bilat_mag, x="region_of_body", y="bilateral_magnitude") 
+        graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
+
+    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
