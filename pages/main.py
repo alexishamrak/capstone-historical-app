@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 import scipy.signal
 from agcounts.extract import get_counts
 import plotly.express as px
+from PIL import Image
 
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
@@ -276,10 +277,34 @@ def display_page(checklist_options, data, bilat_mag):
     # TODO: Find way to differentiate paretic vs nonparetic limb (for now, assume left side of body is paretic) 
 
     # populating visualizations based on checklist options
-    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plot
+    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
     # TODO: return graphs with data
     if 'Human Silhouette' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+        im = Image.open("assets/silhouette_bw.png") # open image
+        width, height = im.size # get the size of the image
+
+        # set color coding scheme
+        danger = (255, 0, 0) # red
+        warning = (255, 127, 0) # orange
+        good = (0, 255, 0) # green
+
+        # TODO: add code to assign color coding to limbs
+        # change color of the image pixels
+        for x in range(width):    
+            for y in range(height):  
+                current_color = im.getpixel( (x,y) )
+                if (x < 288) and (current_color != (255, 255, 255) ): # left arm
+                    im.putpixel( (x,y), danger) 
+                if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
+                    im.putpixel( (x,y), danger) 
+                if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
+                    im.putpixel( (x,y), danger) 
+                if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
+                    im.putpixel( (x,y), danger) 
+        
+        im = im.save("assets/silhouette_edit.png") # save edited image into assets folder
+        graphs[i] = html.Img(src='assets/silhouette_edit.png', style={'display': 'block', 'marginLeft': 'auto', # center image
+                                                                      'marginRight': 'auto', 'width': '50%'}) # display edited image on application
         i += 1
     if 'Pie Graph' in checklist_options:
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
