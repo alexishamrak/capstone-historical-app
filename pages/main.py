@@ -268,17 +268,33 @@ def preprocessing(url_pathname):
           State('bilateral-mag', 'data')
 )
 def display_page(checklist_options, data, bilat_mag):
+    # TODO: Fix double reload (bug)
     # initialize variables needed
     i = 0
     graphs = [[]] * 6
     data = pd.DataFrame(data) 
     bilat_mag = pd.DataFrame(bilat_mag)
 
-    # TODO: Find way to differentiate paretic vs nonparetic limb (for now, assume left side of body is paretic) 
-
+    # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
+    # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
+    # for human silhouetter below, if use ratio is 0.5+ both limbs are classified as moderate. if any value of 
+    # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
+    thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
+    trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
+    if len(trouble_idx_U):
+        if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
+            paretic_arm_idx = 0
+        else: # paretic limb = left
+            paretic_arm_idx = 1
+    # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+    # if len(trouble_idx_L):
+    #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
+    #         paretic_leg_idx = 3
+    #     else: # paretic limb = left
+    #         paretic_leg_idx = 4
+        
     # populating visualizations based on checklist options
     # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
-    # TODO: return graphs with data
     if 'Human Silhouette' in checklist_options:
         im = Image.open("assets/silhouette_bw.png") # open image
         width, height = im.size # get the size of the image
@@ -289,22 +305,18 @@ def display_page(checklist_options, data, bilat_mag):
         # warning = (255, 127, 0) # orange
         moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
         
-        # if use ratio is 0.5+ both limbs are classified as moderate. if any value of use ratio falls 
-        # between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
-        thres = 0.5
+        # assign color to limbs based on severity of movement
         color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
-        trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
         if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
-            if data['Limb Use LH'] > data['Limb Use RH']: # find paretic limb
-                color_LH = severe
+            if 'RH' in data.columns[paretic_arm_idx]:
+                color_RH = severe
             else:
-                color_RH = severe 
-        # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+                color_LH = severe 
         # if len(trouble_idx_L):
-        #     if data['Limb Use LH'] > data['Limb Use RH']:
-        #         color_LL = severe
+        #     if 'RL' in data.columns[paretic_arm_idx]:
+        #         color_RL = severe
         #     else:
-        #         color_RL = severe 
+        #         color_LL = severe 
         
         # change color of the image pixels
         for x in range(width):    
@@ -333,11 +345,9 @@ def display_page(checklist_options, data, bilat_mag):
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
         i += 1
     if 'Box Plots' in checklist_options:
-        # TODO: find columns containing data about the paretic limb(s) - assume LH ONLY for right now
-
         # creating paretic limb acceleration dataset for boxplots
         num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-        paretic_limbs_merge = pd.Series(data['Limb Use LH'], name='paretic_acceleration') # TODO: add 'Limb Use LL'
+        paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='paretic_acceleration') # TODO: add 'Limb Use LL'
         region = pd.Series(["Paretic Arm"] * num_datapoints, name='region_of_body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
         paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
         paretic_acc_boxplot_df = paretic_acc_temp.join(region)
