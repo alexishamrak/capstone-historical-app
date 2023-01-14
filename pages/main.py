@@ -283,24 +283,41 @@ def display_page(checklist_options, data, bilat_mag):
         im = Image.open("assets/silhouette_bw.png") # open image
         width, height = im.size # get the size of the image
 
+        # TODO: is there a better algorithm for classification?
         # set color coding scheme
-        danger = (255, 0, 0) # red
-        warning = (255, 127, 0) # orange
-        good = (0, 255, 0) # green
-
-        # TODO: add code to assign color coding to limbs
+        severe = (255, 0, 0) # red (ARAT score 0-19 > Use Ratio 0-0.5)
+        # warning = (255, 127, 0) # orange
+        moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
+        
+        # if use ratio is 0.5+ both limbs are classified as moderate. if any value of use ratio falls 
+        # between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
+        thres = 0.5
+        color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
+        trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
+        if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
+            if data['Limb Use LH'] > data['Limb Use RH']: # find paretic limb
+                color_LH = severe
+            else:
+                color_RH = severe 
+        # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+        # if len(trouble_idx_L):
+        #     if data['Limb Use LH'] > data['Limb Use RH']:
+        #         color_LL = severe
+        #     else:
+        #         color_RL = severe 
+        
         # change color of the image pixels
         for x in range(width):    
             for y in range(height):  
                 current_color = im.getpixel( (x,y) )
                 if (x < 288) and (current_color != (255, 255, 255) ): # left arm
-                    im.putpixel( (x,y), danger) 
+                    im.putpixel( (x,y), color_LH) 
                 if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
-                    im.putpixel( (x,y), danger) 
+                    im.putpixel( (x,y), color_RH) 
                 if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
-                    im.putpixel( (x,y), danger) 
+                    im.putpixel( (x,y), color_LL) 
                 if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
-                    im.putpixel( (x,y), danger) 
+                    im.putpixel( (x,y), color_RL) 
         
         im = im.save("assets/silhouette_edit.png") # save edited image into assets folder
         graphs[i] = html.Img(src='assets/silhouette_edit.png', style={'display': 'block', 'marginLeft': 'auto', # center image
