@@ -30,7 +30,7 @@ SIDEBAR_STYLE = {
     "top": "5%",
     "width": "21%",
     "height": "100vh",
-    "backgroundColor": "#9bc6b1"
+    "backgroundColor": "#808000" 
 }
 
 CONTENT_STYLE = {
