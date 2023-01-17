@@ -268,7 +268,6 @@ def preprocessing(url_pathname):
           State('bilateral-mag', 'data')
 )
 def display_page(checklist_options, data, bilat_mag):
-    # TODO: Fix double reload (bug)
     # initialize variables needed
     i = 0
     graphs = [[]] * 6
@@ -281,17 +280,15 @@ def display_page(checklist_options, data, bilat_mag):
     # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
     thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
     trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
+    paretic_arm_idx = 1 # paretic limb = left
     if len(trouble_idx_U):
         if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
             paretic_arm_idx = 0
-        else: # paretic limb = left
-            paretic_arm_idx = 1
     # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+    # paretic_leg_idx = 4 # paretic limb = left
     # if len(trouble_idx_L):
     #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
     #         paretic_leg_idx = 3
-    #     else: # paretic limb = left
-    #         paretic_leg_idx = 4
         
     # populating visualizations based on checklist options
     # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
@@ -331,9 +328,10 @@ def display_page(checklist_options, data, bilat_mag):
                 if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
                     im.putpixel( (x,y), color_RL) 
         
-        im = im.save("assets/silhouette_edit.png") # save edited image into assets folder
-        graphs[i] = html.Img(src='assets/silhouette_edit.png', style={'display': 'block', 'marginLeft': 'auto', # center image
-                                                                      'marginRight': 'auto', 'width': '50%'}) # display edited image on application
+        fig = px.imshow(im)
+        fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
+        fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+        graphs[i] = dcc.Graph(figure=fig)
         i += 1
     if 'Pie Graph' in checklist_options:
         graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=2))
