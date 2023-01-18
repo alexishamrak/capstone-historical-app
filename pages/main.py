@@ -31,7 +31,7 @@ SIDEBAR_STYLE = {
     "top": "5%",
     "width": "21%",
     "height": "100vh",
-    "backgroundColor": "#9bc6b1"
+    "backgroundColor": "#9bc6b1" 
 }
 
 CONTENT_STYLE = {
@@ -248,8 +248,8 @@ def preprocessing(url_pathname):
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
     # create dataframe for bilateral magnitude (for boxplots)
-    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='bilateral_magnitude') # TODO: add 'bilateral_leg_mag' 
-    region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
+    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='Bilateral Magnitude') # TODO: add 'bilateral_leg_mag' 
+    region = pd.Series(["Upper Extremities"] * len(bilateral_hand_mag), name='Region of Body') # TODO: add '+ ["Lower Extremities"] * len(bilateral_leg_mag)'
     bilat_temp = pd.DataFrame(bilateral_mag_merge)
     bilateral_mag_df = bilat_temp.join(region)
 
@@ -277,13 +277,64 @@ def display_page(checklist_options, data, bilat_mag):
     data = pd.DataFrame(data) 
     bilat_mag = pd.DataFrame(bilat_mag)
 
-    # TODO: Find way to differentiate paretic vs nonparetic limb (for now, assume left side of body is paretic) 
-
+    # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
+    # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
+    # for human silhouetter below, if use ratio is 0.5+ both limbs are classified as moderate. if any value of 
+    # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
+    thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
+    trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
+    paretic_arm_idx = 1 # paretic limb = left
+    if len(trouble_idx_U):
+        if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
+            paretic_arm_idx = 0
+    # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+    # paretic_leg_idx = 4 # paretic limb = left
+    # if len(trouble_idx_L):
+    #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
+    #         paretic_leg_idx = 3
+        
     # populating visualizations based on checklist options
-    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plot
-    # TODO: return graphs with data
+    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
     if 'Human Silhouette' in checklist_options:
-        graphs[i] = dcc.Graph(figure=make_subplots(rows=1, cols=1))
+        im = Image.open("assets/silhouette_bw.png") # open image
+        width, height = im.size # get the size of the image
+
+        # TODO: is there a better algorithm for classification?
+        # set color coding scheme
+        severe = (255, 0, 0) # red (ARAT score 0-19 > Use Ratio 0-0.5)
+        # warning = (255, 127, 0) # orange
+        moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
+        
+        # assign color to limbs based on severity of movement
+        color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
+        if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
+            if 'RH' in data.columns[paretic_arm_idx]:
+                color_RH = severe
+            else:
+                color_LH = severe 
+        # if len(trouble_idx_L):
+        #     if 'RL' in data.columns[paretic_arm_idx]:
+        #         color_RL = severe
+        #     else:
+        #         color_LL = severe 
+        
+        # change color of the image pixels
+        for x in range(width):    
+            for y in range(height):  
+                current_color = im.getpixel( (x,y) )
+                if (x < 288) and (current_color != (255, 255, 255) ): # left arm
+                    im.putpixel( (x,y), color_LH) 
+                if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
+                    im.putpixel( (x,y), color_RH) 
+                if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
+                    im.putpixel( (x,y), color_LL) 
+                if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
+                    im.putpixel( (x,y), color_RL) 
+        
+        fig = px.imshow(im)
+        fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
+        fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+        graphs[i] = dcc.Graph(figure=fig)
         i += 1
     if 'Pie Graph' in checklist_options:
 
@@ -358,21 +409,21 @@ def display_page(checklist_options, data, bilat_mag):
         i += 1
 
     if 'Box Plots' in checklist_options:
-        # TODO: find columns containing data about the paretic limb(s) - assume LH ONLY for right now
-
         # creating paretic limb acceleration dataset for boxplots
         num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-        paretic_limbs_merge = pd.Series(data['Limb Use LH'], name='paretic_acceleration') # TODO: add 'Limb Use LL'
-        region = pd.Series(["Paretic Arm"] * num_datapoints, name='region_of_body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
+        paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
+        region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
         paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
         paretic_acc_boxplot_df = paretic_acc_temp.join(region)
 
         # plot boxplots for paretic limb acceleration
-        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="region_of_body", y="paretic_acceleration") 
+        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="Region of Body", y="Paretic Acceleration", 
+                                     title="High-Level Summary of Paretic Limb Acceleration") 
         graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
 
         # plot boxplots for bilateral magnitude
-        bilat_mag_boxplot = px.box(bilat_mag, x="region_of_body", y="bilateral_magnitude") 
+        bilat_mag_boxplot = px.box(bilat_mag, x="Region of Body", y="Bilateral Magnitude", 
+                                   title="High-Level Summary of Bilateral Magnitude")
         graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
 
     return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
