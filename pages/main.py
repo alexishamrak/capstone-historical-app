@@ -144,12 +144,12 @@ def filter_data(x_data, y_data, z_data):
     return x_hat, y_hat, z_hat
 
 
-def use_ratio(paretic_count_mag, non_paretic_count_mag, final_time):
+def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     paretic_count = sum(i >= 2 for i in paretic_count_mag)
     non_paretic_count = sum(i >= 2 for i in non_paretic_count_mag)
     use_ratio_calc = paretic_count / non_paretic_count
-    paretic_limb_use = (paretic_count / len(paretic_count_mag)) * final_time
-    non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * final_time
+    paretic_limb_use = (paretic_count / len(paretic_count_mag)) * tot_time
+    non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * tot_time
     return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
 
 
@@ -227,8 +227,10 @@ def preprocessing(url_pathname):
         # ll_counts, ll_count_mag = collecting_counts(ll_raw)
         # rl_counts, rl_count_mag = collecting_counts(rl_raw)
 
+        tot_time = np.ceil(lh_time[last_index_array[i]] - lh_time[first_index_array[i]])
+
         # ASSUMPTION: left and right time is the same
-        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, final_time)
+        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, tot_time)
         # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
 
         h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
@@ -286,39 +288,39 @@ def display_page(checklist_options, data, bilat_mag):
     if 'Pie Graph' in checklist_options:
 
         lh_paretic_limb_use = data['Limb Use LH']
-        lh_paretic_limb_use = np.array(lh_paretic_limb_use)
-        rh_non_paretic_limb_use = data['Limb Use RH']
-        rh_non_paretic_limb_use = np.array(rh_non_paretic_limb_use)
-        total_limb_use = lh_paretic_limb_use + rh_non_paretic_limb_use
+        lh_paretic_limb_use = np.floor(np.array(lh_paretic_limb_use))
 
-        lh_paretic_limb_time = (lh_paretic_limb_use/total_limb_use)*100
-        rh_non_paretic_limb_time = (rh_non_paretic_limb_use/total_limb_use)*100
+        time = [50, 50, 50, 50, 50, 50]
+        remaining_time = np.ceil(time - lh_paretic_limb_use)
+        labels = ['Paretic Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
 
-        labels = ['Paretic', 'Non-paretic']
-
-        # TODO: Will have to change depending on subplot size for full data
+        # TODO: Will have to change depending on subplot size for full data (cannot do now)
         N = 2
         M = 3
 
-        # TODO: will have to populate specs with size of full data
+        # TODO: will have to populate specs with size of full data (cannot do now)
         specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
-        pie_graph = make_subplots(rows=N, cols=M, specs=specs)
+        pie_graph = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
 
         row = 1
         column = 1
 
-        for i in range(len(lh_paretic_limb_time)):
-            pie_graph.add_trace(go.Pie(labels=labels, values=[lh_paretic_limb_time[i], rh_non_paretic_limb_time[i]], 
-            name=i), row, column)
-            if i >= N and row < N:
+        for idx in range(len(lh_paretic_limb_use)):
+            if remaining_time[idx] < 0:
+                remaining_time[idx] = 0
+            pie_graph.add_trace(go.Pie(labels=labels, values=[lh_paretic_limb_use[idx], remaining_time[idx]], 
+            name=idx), row, column)
+            pie_graph.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
+            if idx >= N and row < N:
                 row = row + 1
             if column < M:
                 column = column + 1
-            if i == N:
+            if idx == N:
                 column = 1
 
-        pie_graph.update(layout_title_text='Paretic and Non-Paretic Limb Use')
+        pie_graph.update(layout_title_text='Hourly Paretic Limb Use (Target = 50 minutes)')
         graphs[i] = dcc.Graph(figure=pie_graph)
+        i += 1
 
     if 'Scatter Plot' in checklist_options:
         
@@ -326,16 +328,17 @@ def display_page(checklist_options, data, bilat_mag):
 
         num_dots = len(use_ratio_v) + 1
         ind = np.arange(1, num_dots) 
-        # TODO: adjust ylim and add horizontal lines to legend
+
         scatter_plot = px.scatter(x=ind, y=use_ratio_v)
         scatter_plot.update_traces(marker_size=12)
-        scatter_plot.add_hline(y=0.79, line_dash="dash", line_color="red")
-        scatter_plot.add_hline(y=1.1, line_dash="dash", line_color="red")
+        scatter_plot.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
+        scatter_plot.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
 
         scatter_plot.update_layout(title_text="Use ratio relative to typical range", 
-        xaxis_title="Hours",  yaxis_title="Use Ratio")
+        xaxis_title="Hours",  yaxis_title="Use Ratio", yaxis_range=[0,2])
 
         graphs[i] = dcc.Graph(figure=scatter_plot)
+        i += 1
 
     if 'Bar Graph' in checklist_options:
 
@@ -347,11 +350,12 @@ def display_page(checklist_options, data, bilat_mag):
 
         bar_graph = go.Figure(data=[go.Bar(name='Non-paretic', x=ind, y=rh_non_paretic_limb_use), 
         go.Bar(name='Paretic', x=ind, y=lh_paretic_limb_use)])
-        # Change the bar mode
+
         bar_graph.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Limbs', 
          xaxis_title="Hours",  yaxis_title="Activity Count")
 
         graphs[i] = dcc.Graph(figure=bar_graph)
+        i += 1
 
     if 'Box Plots' in checklist_options:
         # TODO: find columns containing data about the paretic limb(s) - assume LH ONLY for right now
