@@ -245,8 +245,8 @@ def preprocessing(url_pathname):
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
     # create dataframe for bilateral magnitude (for boxplots)
-    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='bilateral_magnitude') # TODO: add 'bilateral_leg_mag' 
-    region = pd.Series(["upper extremities"] * len(bilateral_hand_mag), name='region_of_body') # TODO: add '+ ["lower extremities"] * len(bilateral_leg_mag)'
+    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='Bilateral Magnitude') # TODO: add 'bilateral_leg_mag' 
+    region = pd.Series(["Upper Extremities"] * len(bilateral_hand_mag), name='Region of Body') # TODO: add '+ ["Lower Extremities"] * len(bilateral_leg_mag)'
     bilat_temp = pd.DataFrame(bilateral_mag_merge)
     bilateral_mag_df = bilat_temp.join(region)
 
@@ -345,17 +345,19 @@ def display_page(checklist_options, data, bilat_mag):
     if 'Box Plots' in checklist_options:
         # creating paretic limb acceleration dataset for boxplots
         num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-        paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='paretic_acceleration') # TODO: add 'Limb Use LL'
-        region = pd.Series(["Paretic Arm"] * num_datapoints, name='region_of_body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
+        paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
+        region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
         paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
         paretic_acc_boxplot_df = paretic_acc_temp.join(region)
 
         # plot boxplots for paretic limb acceleration
-        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="region_of_body", y="paretic_acceleration") 
+        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="Region of Body", y="Paretic Acceleration", 
+                                     title="High-Level Summary of Paretic Limb Acceleration") 
         graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
 
         # plot boxplots for bilateral magnitude
-        bilat_mag_boxplot = px.box(bilat_mag, x="region_of_body", y="bilateral_magnitude") 
+        bilat_mag_boxplot = px.box(bilat_mag, x="Region of Body", y="Bilateral Magnitude", 
+                                   title="High-Level Summary of Bilateral Magnitude")
         graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
 
     return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
