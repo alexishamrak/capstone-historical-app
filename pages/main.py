@@ -11,6 +11,7 @@ import scipy.signal
 from agcounts.extract import get_counts
 import plotly.express as px
 from PIL import Image
+import plotly.graph_objects as go
 
 # to indicate this is a page of the app
 dash.register_page(__name__, title="JEJARD Analytics")
@@ -351,13 +352,23 @@ def display_page(checklist_options, data, bilat_mag):
         paretic_acc_boxplot_df = paretic_acc_temp.join(region)
 
         # plot boxplots for paretic limb acceleration
-        paretic_acc_boxplot = px.box(paretic_acc_boxplot_df, x="Region of Body", y="Paretic Acceleration", 
-                                     title="High-Level Summary of Paretic Limb Acceleration") 
+        paretic_acc_boxplot = go.Figure()
+        paretic_acc_boxplot.add_trace(go.Box(x=paretic_acc_boxplot_df["Region of Body"], 
+                                             y=paretic_acc_boxplot_df["Paretic Acceleration"],
+                                             boxmean='sd')) # represent mean and standard deviation
+        paretic_acc_boxplot.update_layout(title_text="Summary of Paretic Limb Acceleration", 
+                                          xaxis_title="Region of Body",  
+                                          yaxis_title="Paretic Acceleration")
         graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
 
         # plot boxplots for bilateral magnitude
-        bilat_mag_boxplot = px.box(bilat_mag, x="Region of Body", y="Bilateral Magnitude", 
-                                   title="High-Level Summary of Bilateral Magnitude")
+        bilat_mag_boxplot = go.Figure()
+        bilat_mag_boxplot.add_trace(go.Box(x=bilat_mag["Region of Body"], 
+                                           y=bilat_mag["Bilateral Magnitude"],
+                                           boxmean='sd')) # represent mean and standard deviation
+        bilat_mag_boxplot.update_layout(title_text="Summary of Bilateral Magnitude", 
+                                        xaxis_title="Region of Body",  
+                                        yaxis_title="Bilateral Magnitude")
         graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
 
     return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
