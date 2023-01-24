@@ -267,227 +267,230 @@ def preprocessing(url_pathname):
           Output('card5', 'children'),
           Output('card6', 'children'),
           Input('checklist', 'value'),
-          State('filter-data', 'data'),
+          Input('filter-data', 'data'),
           State('bilateral-mag', 'data')
 )
 def display_page(checklist_options, data, bilat_mag):
-    # initialize variables needed
-    i = 0
-    graphs = [[]] * 6
-    data = pd.DataFrame(data) 
-    bilat_mag = pd.DataFrame(bilat_mag)
+    if data is not None:
+        # initialize variables needed
+        i = 0
+        graphs = [[]] * 6
+        data = pd.DataFrame(data) 
+        bilat_mag = pd.DataFrame(bilat_mag)
 
-    # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
-    # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
-    # for human silhouetter below, if use ratio is 0.5+ both limbs are classified as moderate. if any value of 
-    # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
-    thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
-    trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
-    non_paretic_arm_idx, paretic_arm_idx = 0, 1 # paretic limb = left
-    if len(trouble_idx_U):
-        if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
-            non_paretic_arm_idx, paretic_arm_idx = 1, 0
-    # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
-    # non_paretic_leg_idx, paretic_leg_idx = 3, 4 # paretic limb = left
-    # if len(trouble_idx_L):
-    #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
-    #         non_paretic_leg_idx, paretic_leg_idx = 4, 3
-        
-    # populating visualizations based on checklist options
-    # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
-    if 'Human Silhouette' in checklist_options:
-        im = Image.open("assets/silhouette_bw.png") # open image
-        width, height = im.size # get the size of the image
-
-        # TODO: is there a better algorithm for classification?
-        # set color coding scheme
-        severe = (255, 0, 0) # red (ARAT score 0-19 > Use Ratio 0-0.5)
-        # warning = (255, 127, 0) # orange
-        moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
-        
-        # assign color to limbs based on severity of movement
-        color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
-        if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
-            if 'RH' in data.columns[paretic_arm_idx]:
-                color_RH = severe
-            else:
-                color_LH = severe 
+        # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
+        # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
+        # for human silhouetter below, if use ratio is 0.5+ both limbs are classified as moderate. if any value of 
+        # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
+        thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
+        trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
+        non_paretic_arm_idx, paretic_arm_idx = 0, 1 # paretic limb = left
+        if len(trouble_idx_U):
+            if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
+                non_paretic_arm_idx, paretic_arm_idx = 1, 0
+        # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+        # non_paretic_leg_idx, paretic_leg_idx = 3, 4 # paretic limb = left
         # if len(trouble_idx_L):
-        #     if 'RL' in data.columns[paretic_arm_idx]:
-        #         color_RL = severe
-        #     else:
-        #         color_LL = severe 
-        
-        # change color of the image pixels
-        for x in range(width):    
-            for y in range(height):  
-                current_color = im.getpixel( (x,y) )
-                if (x < 288) and (current_color != (255, 255, 255) ): # left arm
-                    im.putpixel( (x,y), color_LH) 
-                if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
-                    im.putpixel( (x,y), color_RH) 
-                if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
-                    im.putpixel( (x,y), color_LL) 
-                if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
-                    im.putpixel( (x,y), color_RL) 
-        
-        fig = px.imshow(im)
-        fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
-        fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
-        graphs[i] = dcc.Graph(figure=fig)
-        i += 1
-    if 'Pie Graph' in checklist_options:
+        #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
+        #         non_paretic_leg_idx, paretic_leg_idx = 4, 3
+            
+        # populating visualizations based on checklist options
+        # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
+        if 'Human Silhouette' in checklist_options:
+            im = Image.open("assets/silhouette_bw.png") # open image
+            width, height = im.size # get the size of the image
 
-        paretic_arm = data.iloc[:, paretic_arm_idx]
-        paretic_arm = np.floor(np.array(paretic_arm))
-        # paretic_leg = data.iloc[:, paretic_leg_idx]
-        # paretic_leg = np.floor(np.array(paretic_leg))
+            # TODO: is there a better algorithm for classification?
+            # set color coding scheme
+            severe = (255, 0, 0) # red (ARAT score 0-19 > Use Ratio 0-0.5)
+            # warning = (255, 127, 0) # orange
+            moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
+            
+            # assign color to limbs based on severity of movement
+            color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
+            if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
+                if 'RH' in data.columns[paretic_arm_idx]:
+                    color_RH = severe
+                else:
+                    color_LH = severe 
+            # if len(trouble_idx_L):
+            #     if 'RL' in data.columns[paretic_arm_idx]:
+            #         color_RL = severe
+            #     else:
+            #         color_LL = severe 
+            
+            # change color of the image pixels
+            for x in range(width):    
+                for y in range(height):  
+                    current_color = im.getpixel( (x,y) )
+                    if (x < 288) and (current_color != (255, 255, 255) ): # left arm
+                        im.putpixel( (x,y), color_LH) 
+                    if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
+                        im.putpixel( (x,y), color_RH) 
+                    if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
+                        im.putpixel( (x,y), color_LL) 
+                    if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
+                        im.putpixel( (x,y), color_RL) 
+            
+            fig = px.imshow(im)
+            fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
+            fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+            graphs[i] = dcc.Graph(figure=fig)
+            i += 1
+        if 'Pie Graph' in checklist_options:
 
-        # TODO: Adjust time vector based on final dataset length
-        time = [50, 50, 50, 50, 50, 50]
-        remaining_arm_time = np.ceil(time - paretic_arm)
-        labels = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
-        # remaining_leg_time = np.ceil(time - paretic_leg)
-        # labels = ['Paretic Leg Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+            paretic_arm = data.iloc[:, paretic_arm_idx]
+            paretic_arm = np.floor(np.array(paretic_arm))
+            # paretic_leg = data.iloc[:, paretic_leg_idx]
+            # paretic_leg = np.floor(np.array(paretic_leg))
 
-        # ASSUMPTION: leg graph will have the same number of subplots, specs, and target time
-        # TODO: Will automate N, M, specs, and subplot_titles
-        # TODO: Will have to change depending on subplot size for full data (cannot do now)
-        N = 2
-        M = 3
+            # TODO: Adjust time vector based on final dataset length
+            time = [50, 50, 50, 50, 50, 50]
+            remaining_arm_time = np.ceil(time - paretic_arm)
+            labels = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+            # remaining_leg_time = np.ceil(time - paretic_leg)
+            # labels = ['Paretic Leg Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
 
-        # TODO: Will have to populate specs with size of full data (cannot do now)
-        specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
-        pie_graph_arm = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
+            # ASSUMPTION: leg graph will have the same number of subplots, specs, and target time
+            # TODO: Will automate N, M, specs, and subplot_titles
+            # TODO: Will have to change depending on subplot size for full data (cannot do now)
+            N = 2
+            M = 3
 
-        row = 1
-        column = 1
+            # TODO: Will have to populate specs with size of full data (cannot do now)
+            specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
+            pie_graph_arm = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
 
-        for idx in range(len(paretic_arm)):
-            if remaining_arm_time[idx] < 0:
-                remaining_arm_time[idx] = 0
-            pie_graph_arm.add_trace(go.Pie(labels=labels, values=[paretic_arm[idx], remaining_arm_time[idx]], 
-            name=idx), row, column)
-            pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-            if idx >= N and row < N:
-                row = row + 1
-            if column < M:
-                column = column + 1
-            if idx == N:
-                column = 1
+            row = 1
+            column = 1
 
-        pie_graph_arm.update(layout_title_text='Hourly Paretic Arm Use (Target = 50 minutes)')
-        graphs[i] = dcc.Graph(figure=pie_graph_arm)
+            for idx in range(len(paretic_arm)):
+                if remaining_arm_time[idx] < 0:
+                    remaining_arm_time[idx] = 0
+                pie_graph_arm.add_trace(go.Pie(labels=labels, values=[paretic_arm[idx], remaining_arm_time[idx]], 
+                name=idx), row, column)
+                pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
+                if idx >= N and row < N:
+                    row = row + 1
+                if column < M:
+                    column = column + 1
+                if idx == N:
+                    column = 1
 
-        # Code for leg graph below, currently structured to be below arm graph
-        # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
+            pie_graph_arm.update(layout_title_text='Hourly Paretic Arm Use (Target = 50 minutes)')
+            graphs[i] = dcc.Graph(figure=pie_graph_arm)
 
-        # for idx in range(len(paretic_leg)):
-        #     if remaining_leg_time[idx] < 0:
-        #         remaining_leg_time[idx] = 0
-        #     pie_graph_leg.add_trace(go.Pie(labels=labels, values=[paretic_leg[idx], remaining_leg_time[idx]], 
-        #     name=idx), row, column)
-        #     pie_graph_leg.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-        #     if idx >= N and row < N:
-        #         row = row + 1
-        #     if column < M:
-        #         column = column + 1
-        #     if idx == N:
-        #         column = 1
+            # Code for leg graph below, currently structured to be below arm graph
+            # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
 
-        # pie_graph_leg.update(layout_title_text='Hourly Paretic Leg Use (Target = 50 minutes)')
-        # graphs[i+1] = dcc.Graph(figure=pie_graph_leg)
+            # for idx in range(len(paretic_leg)):
+            #     if remaining_leg_time[idx] < 0:
+            #         remaining_leg_time[idx] = 0
+            #     pie_graph_leg.add_trace(go.Pie(labels=labels, values=[paretic_leg[idx], remaining_leg_time[idx]], 
+            #     name=idx), row, column)
+            #     pie_graph_leg.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
+            #     if idx >= N and row < N:
+            #         row = row + 1
+            #     if column < M:
+            #         column = column + 1
+            #     if idx == N:
+            #         column = 1
 
-        i += 1
+            # pie_graph_leg.update(layout_title_text='Hourly Paretic Leg Use (Target = 50 minutes)')
+            # graphs[i+1] = dcc.Graph(figure=pie_graph_leg)
 
-    if 'Scatter Plot' in checklist_options:
-        
-        use_ratio_arm = data['Use Ratio U']
-        # use_Ratio_leg = data['Use Ratio U']
+            i += 1
 
-        # ASSUMPTION: vector length of leg and arm use ratio will be the same
-        num_dots = len(use_ratio_arm) + 1
-        ind = np.arange(1, num_dots) 
+        if 'Scatter Plot' in checklist_options:
+            
+            use_ratio_arm = data['Use Ratio U']
+            # use_Ratio_leg = data['Use Ratio U']
 
-        scatter_plot_arm = px.scatter(x=ind, y=use_ratio_arm)
-        scatter_plot_arm.update_traces(marker_size=20)
-        scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
-        scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
+            # ASSUMPTION: vector length of leg and arm use ratio will be the same
+            num_dots = len(use_ratio_arm) + 1
+            ind = np.arange(1, num_dots) 
 
-        scatter_plot_arm.update_layout(title_text="Use Ratio of Arms Relative to Typical Range", 
-        xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
+            scatter_plot_arm = px.scatter(x=ind, y=use_ratio_arm)
+            scatter_plot_arm.update_traces(marker_size=20)
+            scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
+            scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
 
-        graphs[i] = dcc.Graph(figure=scatter_plot_arm)
+            scatter_plot_arm.update_layout(title_text="Use Ratio of Arms Relative to Typical Range", 
+            xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
 
-        # Code for leg graph below, currently structured to be below arm graph
-        # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
-        # scatter_plot_leg.update_traces(marker_size=20)
-        # scatter_plot_leg.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
-        # scatter_plot_leg.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
+            graphs[i] = dcc.Graph(figure=scatter_plot_arm)
 
-        # scatter_plot_leg.update_layout(title_text="Use Ratio of Legs Relative to Typical Range", 
-        # xaxis_title="Hours",  yaxis_title="Leg Use Ratio", yaxis_range=[0,2])
+            # Code for leg graph below, currently structured to be below arm graph
+            # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
+            # scatter_plot_leg.update_traces(marker_size=20)
+            # scatter_plot_leg.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
+            # scatter_plot_leg.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
 
-        # graphs[i+1] = dcc.Graph(figure=scatter_plot)
+            # scatter_plot_leg.update_layout(title_text="Use Ratio of Legs Relative to Typical Range", 
+            # xaxis_title="Hours",  yaxis_title="Leg Use Ratio", yaxis_range=[0,2])
 
-        i += 1
+            # graphs[i+1] = dcc.Graph(figure=scatter_plot)
 
-    if 'Bar Graph' in checklist_options:
+            i += 1
 
-        paretic_arm = data.iloc[:, paretic_arm_idx]
-        non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
-        # paretic_leg = data.iloc[:, paretic_leg_idx]
-        # non_paretic_leg = data.iloc[:, non_paretic_leg_idx]
+        if 'Bar Graph' in checklist_options:
 
-        # ASSUMPTION: vector length of all four limbs is the same
-        num_bars = len(paretic_arm) + 1
-        ind = np.arange(1, num_bars)
+            paretic_arm = data.iloc[:, paretic_arm_idx]
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
+            # paretic_leg = data.iloc[:, paretic_leg_idx]
+            # non_paretic_leg = data.iloc[:, non_paretic_leg_idx]
 
-        bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
-        go.Bar(name='Paretic', x=ind, y=paretic_arm)])
+            # ASSUMPTION: vector length of all four limbs is the same
+            num_bars = len(paretic_arm) + 1
+            ind = np.arange(1, num_bars)
 
-        bar_graph_arm.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Arms', 
-         xaxis_title="Hours",  yaxis_title="Activity Count")
+            bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
+            go.Bar(name='Paretic', x=ind, y=paretic_arm)])
 
-        graphs[i] = dcc.Graph(figure=bar_graph_arm)
+            bar_graph_arm.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Arms', 
+            xaxis_title="Hours",  yaxis_title="Activity Count")
 
-        # Code for leg graph below, currently structured to be below arm graph
-        # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
-        # go.Bar(name='Paretic', x=ind, y=paretic_leg)])
+            graphs[i] = dcc.Graph(figure=bar_graph_arm)
 
-        # bar_graph_leg.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Legs', 
-        #  xaxis_title="Hours",  yaxis_title="Activity Count")
+            # Code for leg graph below, currently structured to be below arm graph
+            # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
+            # go.Bar(name='Paretic', x=ind, y=paretic_leg)])
 
-        # graphs[i+1] = dcc.Graph(figure=bar_graph_leg)
+            # bar_graph_leg.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Legs', 
+            #  xaxis_title="Hours",  yaxis_title="Activity Count")
 
-        i += 1
+            # graphs[i+1] = dcc.Graph(figure=bar_graph_leg)
 
-    if 'Box Plots' in checklist_options:
-        # creating paretic limb acceleration dataset for boxplots
-        num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-        paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
-        region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
-        paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
-        paretic_acc_boxplot_df = paretic_acc_temp.join(region)
+            i += 1
 
-        # plot boxplots for paretic limb acceleration
-        paretic_acc_boxplot = go.Figure()
-        paretic_acc_boxplot.add_trace(go.Box(x=paretic_acc_boxplot_df["Region of Body"], 
-                                             y=paretic_acc_boxplot_df["Paretic Acceleration"],
-                                             boxmean='sd')) # represent mean and standard deviation
-        paretic_acc_boxplot.update_layout(title_text="Summary of Paretic Limb Acceleration", 
-                                          xaxis_title="Region of Body",  
-                                          yaxis_title="Paretic Acceleration")
-        graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
+        if 'Box Plots' in checklist_options:
+            # creating paretic limb acceleration dataset for boxplots
+            num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
+            paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
+            region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
+            paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
+            paretic_acc_boxplot_df = paretic_acc_temp.join(region)
 
-        # plot boxplots for bilateral magnitude
-        bilat_mag_boxplot = go.Figure()
-        bilat_mag_boxplot.add_trace(go.Box(x=bilat_mag["Region of Body"], 
-                                           y=bilat_mag["Bilateral Magnitude"],
-                                           boxmean='sd')) # represent mean and standard deviation
-        bilat_mag_boxplot.update_layout(title_text="Summary of Bilateral Magnitude", 
-                                        xaxis_title="Region of Body",  
-                                        yaxis_title="Bilateral Magnitude")
-        graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
+            # plot boxplots for paretic limb acceleration
+            paretic_acc_boxplot = go.Figure()
+            paretic_acc_boxplot.add_trace(go.Box(x=paretic_acc_boxplot_df["Region of Body"], 
+                                                y=paretic_acc_boxplot_df["Paretic Acceleration"],
+                                                boxmean='sd')) # represent mean and standard deviation
+            paretic_acc_boxplot.update_layout(title_text="Summary of Paretic Limb Acceleration", 
+                                            xaxis_title="Region of Body",  
+                                            yaxis_title="Paretic Acceleration")
+            graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
 
-    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
+            # plot boxplots for bilateral magnitude
+            bilat_mag_boxplot = go.Figure()
+            bilat_mag_boxplot.add_trace(go.Box(x=bilat_mag["Region of Body"], 
+                                            y=bilat_mag["Bilateral Magnitude"],
+                                            boxmean='sd')) # represent mean and standard deviation
+            bilat_mag_boxplot.update_layout(title_text="Summary of Bilateral Magnitude", 
+                                            xaxis_title="Region of Body",  
+                                            yaxis_title="Bilateral Magnitude")
+            graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
+
+        return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
+    else:
+        raise PreventUpdate
