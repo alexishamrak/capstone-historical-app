@@ -97,6 +97,12 @@ content = html.Div(
         dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
         html.Pre(),
         dbc.Card(id='card6', children=dbc.CardBody(html.Div(id='graph6'))),
+        html.Pre(),
+        dbc.Card(id='card7', children=dbc.CardBody(html.Div(id='graph7'))),
+        html.Pre(),
+        dbc.Card(id='card8', children=dbc.CardBody(html.Div(id='graph8'))),
+        html.Pre(),
+        dbc.Card(id='card9', children=dbc.CardBody(html.Div(id='graph9'))),
         dcc.Store(id='filter-data', storage_type='session'),
         dcc.Store(id='bilateral-mag', storage_type='session')
     ],
@@ -187,16 +193,16 @@ def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
 def preprocessing(url_pathname):
     left_hand = pd.read_csv('assets/left_hand_lm.csv')
     right_hand = pd.read_csv('assets/right_hand_hm.csv')
-    # left_leg = pd.read_csv('Assets/left_leg_lm.csv')
-    # right_leg = pd.read_csv('Assets/right_leg_hm.csv')
+    left_leg = pd.read_csv('Assets/left_hand_lm.csv')
+    right_leg = pd.read_csv('Assets/right_hand_hm.csv')
 
     freq = 50
     epoch = 1
 
     lh_time, lh_x, lh_y, lh_z, lh_raw = sorting_data(left_hand)
     rh_time, rh_x, rh_y, rh_z, rh_raw = sorting_data(right_hand)
-    # ll_time, ll_X, ll_Y, ll_Z, ll_raw = sorting_data(left_leg)
-    # rl_time, rl_X, rl_Y, rl_Z, rl_raw = sorting_data(right_leg)
+    ll_time, ll_X, ll_Y, ll_Z, ll_raw = sorting_data(left_leg)
+    rl_time, rl_X, rl_Y, rl_Z, rl_raw = sorting_data(right_leg)
 
     # creating arrays to store the start and end indices of time segments
     time_interval = 60  # should be changed to 3600s
@@ -215,37 +221,46 @@ def preprocessing(url_pathname):
 
     lh_x_hat, lh_y_hat, lh_z_hat = filter_data(lh_x, lh_y, lh_z)
     rh_x_hat, rh_y_hat, rh_z_hat = filter_data(rh_x, rh_y, rh_z)
-    # ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
-    # rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
+    ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
+    rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
 
     h_non_paretic_limb_use_final = []
     hand_use_ratio_final = []
     h_paretic_limb_use_final = []
 
+    l_non_paretic_limb_use_final = []
+    leg_use_ratio_final = []
+    l_paretic_limb_use_final = []
+
     for i in range(len(last_index_array)):
         lh_counts, lh_count_mag = collecting_counts(lh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
         rh_counts, rh_count_mag = collecting_counts(rh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
-        # ll_counts, ll_count_mag = collecting_counts(ll_raw)
-        # rl_counts, rl_count_mag = collecting_counts(rl_raw)
+        ll_counts, ll_count_mag = collecting_counts(ll_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
+        rl_counts, rl_count_mag = collecting_counts(rl_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
 
-        tot_time = np.ceil(lh_time[last_index_array[i]] - lh_time[first_index_array[i]])
+        tot_time_hand = np.ceil(lh_time[last_index_array[i]] - lh_time[first_index_array[i]])
+        tot_time_leg = np.ceil(ll_time[last_index_array[i]] - ll_time[first_index_array[i]])
 
         # ASSUMPTION: left and right time is the same
-        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, tot_time)
-        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
+        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, tot_time_hand)
+        leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, tot_time_leg)
 
         h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
         hand_use_ratio_final.append(hand_use_ratio)
         h_paretic_limb_use_final.append(h_paretic_limb_use)
 
+        l_non_paretic_limb_use_final.append(l_non_paretic_limb_use)
+        leg_use_ratio_final.append(leg_use_ratio)
+        l_paretic_limb_use_final.append(l_paretic_limb_use)
+
     lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
     rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
-    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
+    ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
+    rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
 
     bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
     # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
-    # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
+    bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag, ll_time, rl_time)
     # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
 
     # create dataframe for bilateral magnitude (for boxplots)
@@ -255,8 +270,8 @@ def preprocessing(url_pathname):
     bilateral_mag_df = bilat_temp.join(region)
 
     # TODO: pass in data for legs
-    data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
-    df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
+    data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final, l_non_paretic_limb_use_final, l_paretic_limb_use_final, leg_use_ratio_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U', 'Limb Use RL', 'Limb Use LL', 'Use Ratio L']).to_dict('records')
     return df, bilateral_mag_df.to_dict('records') 
 
 
@@ -267,6 +282,9 @@ def preprocessing(url_pathname):
           Output('card4', 'children'),
           Output('card5', 'children'),
           Output('card6', 'children'),
+          Output('card7', 'children'),
+          Output('card8', 'children'),
+          Output('card9', 'children'),
           Input('checklist', 'value'),
           State('filter-data', 'data'),
           State('bilateral-mag', 'data')
@@ -274,7 +292,7 @@ def preprocessing(url_pathname):
 def display_page(checklist_options, data, bilat_mag):
     # initialize variables needed
     i = 0
-    graphs = [[]] * 6
+    graphs = [[]] * 9
     data = pd.DataFrame(data) 
     bilat_mag = pd.DataFrame(bilat_mag)
 
@@ -288,11 +306,11 @@ def display_page(checklist_options, data, bilat_mag):
     if len(trouble_idx_U):
         if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
             non_paretic_arm_idx, paretic_arm_idx = 1, 0
-    # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
-    # non_paretic_leg_idx, paretic_leg_idx = 3, 4 # paretic limb = left
-    # if len(trouble_idx_L):
-    #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
-    #         non_paretic_leg_idx, paretic_leg_idx = 4, 3
+    trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
+    non_paretic_leg_idx, paretic_leg_idx = 3, 4 # paretic limb = left
+    if len(trouble_idx_L):
+        if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
+            non_paretic_leg_idx, paretic_leg_idx = 4, 3
         
     # populating visualizations based on checklist options
     # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
@@ -341,15 +359,15 @@ def display_page(checklist_options, data, bilat_mag):
 
         paretic_arm = data.iloc[:, paretic_arm_idx]
         paretic_arm = np.floor(np.array(paretic_arm))
-        # paretic_leg = data.iloc[:, paretic_leg_idx]
-        # paretic_leg = np.floor(np.array(paretic_leg))
+        paretic_leg = data.iloc[:, paretic_leg_idx]
+        paretic_leg = np.floor(np.array(paretic_leg))
 
         # TODO: Adjust time vector based on final dataset length
         time = [50, 50, 50, 50, 50, 50]
         remaining_arm_time = np.ceil(time - paretic_arm)
-        labels = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
-        # remaining_leg_time = np.ceil(time - paretic_leg)
-        # labels = ['Paretic Leg Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+        labels_arm = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+        remaining_leg_time = np.ceil(time - paretic_leg)
+        labels_leg = ['Paretic Leg Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
 
         # ASSUMPTION: leg graph will have the same number of subplots, specs, and target time
         # TODO: Will automate N, M, specs, and subplot_titles
@@ -367,7 +385,7 @@ def display_page(checklist_options, data, bilat_mag):
         for idx in range(len(paretic_arm)):
             if remaining_arm_time[idx] < 0:
                 remaining_arm_time[idx] = 0
-            pie_graph_arm.add_trace(go.Pie(labels=labels, values=[paretic_arm[idx], remaining_arm_time[idx]], 
+            pie_graph_arm.add_trace(go.Pie(labels=labels_arm, values=[paretic_arm[idx], remaining_arm_time[idx]], 
             name=idx), row, column)
             pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
             if idx >= N and row < N:
@@ -381,30 +399,33 @@ def display_page(checklist_options, data, bilat_mag):
         graphs[i] = dcc.Graph(figure=pie_graph_arm)
 
         # Code for leg graph below, currently structured to be below arm graph
-        # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
+        pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
 
-        # for idx in range(len(paretic_leg)):
-        #     if remaining_leg_time[idx] < 0:
-        #         remaining_leg_time[idx] = 0
-        #     pie_graph_leg.add_trace(go.Pie(labels=labels, values=[paretic_leg[idx], remaining_leg_time[idx]], 
-        #     name=idx), row, column)
-        #     pie_graph_leg.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-        #     if idx >= N and row < N:
-        #         row = row + 1
-        #     if column < M:
-        #         column = column + 1
-        #     if idx == N:
-        #         column = 1
+        row = 1
+        column = 1
 
-        # pie_graph_leg.update(layout_title_text='Hourly Paretic Leg Use (Target = 50 minutes)')
-        # graphs[i+1] = dcc.Graph(figure=pie_graph_leg)
+        for idx in range(len(paretic_leg)):
+            if remaining_leg_time[idx] < 0:
+                remaining_leg_time[idx] = 0
+            pie_graph_leg.add_trace(go.Pie(labels=labels_leg, values=[paretic_leg[idx], remaining_leg_time[idx]], 
+            name=idx), row, column)
+            pie_graph_leg.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
+            if idx >= N and row < N:
+                row = row + 1
+            if column < M:
+                column = column + 1
+            if idx == N:
+                column = 1
 
-        i += 1
+        pie_graph_leg.update(layout_title_text='Hourly Paretic Leg Use (Target = 50 minutes)')
+        graphs[i+1] = dcc.Graph(figure=pie_graph_leg)
+
+        i += 2
 
     if 'Scatter Plot' in checklist_options:
         
         use_ratio_arm = data['Use Ratio U']
-        # use_Ratio_leg = data['Use Ratio U']
+        use_ratio_leg = data['Use Ratio L']
 
         # ASSUMPTION: vector length of leg and arm use ratio will be the same
         num_dots = len(use_ratio_arm) + 1
@@ -420,25 +441,24 @@ def display_page(checklist_options, data, bilat_mag):
 
         graphs[i] = dcc.Graph(figure=scatter_plot_arm)
 
-        # Code for leg graph below, currently structured to be below arm graph
-        # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
-        # scatter_plot_leg.update_traces(marker_size=20)
-        # scatter_plot_leg.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
-        # scatter_plot_leg.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
+        scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
+        scatter_plot_leg.update_traces(marker_size=20)
+        scatter_plot_leg.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
+        scatter_plot_leg.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
 
-        # scatter_plot_leg.update_layout(title_text="Use Ratio of Legs Relative to Typical Range", 
-        # xaxis_title="Hours",  yaxis_title="Leg Use Ratio", yaxis_range=[0,2])
+        scatter_plot_leg.update_layout(title_text="Use Ratio of Legs Relative to Typical Range", 
+        xaxis_title="Hours",  yaxis_title="Leg Use Ratio", yaxis_range=[0,2])
 
-        # graphs[i+1] = dcc.Graph(figure=scatter_plot)
+        graphs[i+1] = dcc.Graph(figure=scatter_plot_leg)
 
-        i += 1
+        i += 2
 
     if 'Bar Graph' in checklist_options:
 
         paretic_arm = data.iloc[:, paretic_arm_idx]
         non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
-        # paretic_leg = data.iloc[:, paretic_leg_idx]
-        # non_paretic_leg = data.iloc[:, non_paretic_leg_idx]
+        paretic_leg = data.iloc[:, paretic_leg_idx]
+        non_paretic_leg = data.iloc[:, non_paretic_leg_idx]
 
         # ASSUMPTION: vector length of all four limbs is the same
         num_bars = len(paretic_arm) + 1
@@ -453,15 +473,15 @@ def display_page(checklist_options, data, bilat_mag):
         graphs[i] = dcc.Graph(figure=bar_graph_arm)
 
         # Code for leg graph below, currently structured to be below arm graph
-        # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
-        # go.Bar(name='Paretic', x=ind, y=paretic_leg)])
+        bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
+        go.Bar(name='Paretic', x=ind, y=paretic_leg)])
 
-        # bar_graph_leg.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Legs', 
-        #  xaxis_title="Hours",  yaxis_title="Activity Count")
+        bar_graph_leg.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Legs', 
+         xaxis_title="Hours",  yaxis_title="Activity Count")
 
-        # graphs[i+1] = dcc.Graph(figure=bar_graph_leg)
+        graphs[i+1] = dcc.Graph(figure=bar_graph_leg)
 
-        i += 1
+        i += 2
 
     if 'Box Plots' in checklist_options:
         # creating paretic limb acceleration dataset for boxplots
@@ -481,4 +501,4 @@ def display_page(checklist_options, data, bilat_mag):
                                    title="High-Level Summary of Bilateral Magnitude")
         graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
 
-    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
+    return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5], graphs[6], graphs[7], graphs[8]
