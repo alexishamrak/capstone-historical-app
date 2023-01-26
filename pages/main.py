@@ -146,36 +146,12 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
 
 
-def calc_mag(x_filt, y_filt, z_filt):
-    mag = np.sqrt(x_filt ** 2 + y_filt ** 2 + z_filt ** 2)
-    return mag
-
-
-def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
-    # merge time and magnitude datasets for left and right limb
-    left = np.transpose(np.vstack((left_time, leftside_mag)))
-    right = np.transpose(np.vstack((right_time, rightside_mag)))
-    # convert dataset into a Pandas Dataframe and add column names
-    leftside_mag_df = pd.DataFrame(left, columns=['time', 'left_mag'])
-    rightside_mag_df = pd.DataFrame(right, columns=['time', 'right_mag'])
-    # merge datasets based on time column
-    if len(left_time) > len(right_time):
-        merged_dataset = leftside_mag_df.merge(rightside_mag_df, on='time', how='left')
-    else:
-        merged_dataset = rightside_mag_df.merge(leftside_mag_df, on='time', how='left')
-
-    bilat_mag = np.nansum([merged_dataset['left_mag'], merged_dataset['right_mag']], axis=0)
-
-    return bilat_mag
-
-
 ############################################### Callbacks ###############################################
 
 # preprocess data
 @callback(Output('filter-data', 'data'),
-          Output('bilateral-mag', 'data'),
-          Input('url', 'pathname'))
-
+          Input('url', 'pathname')
+)
 def preprocessing(url_pathname):
     left_hand = pd.read_csv('assets/left_hand_lm.csv')
     right_hand = pd.read_csv('assets/right_hand_hm.csv')
@@ -230,26 +206,10 @@ def preprocessing(url_pathname):
         hand_use_ratio_final.append(hand_use_ratio)
         h_paretic_limb_use_final.append(h_paretic_limb_use)
 
-    lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
-    rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
-    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
-
-    bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
-    # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
-    # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
-    # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
-
-    # create dataframe for bilateral magnitude (for boxplots)
-    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='Bilateral Magnitude') # TODO: add 'bilateral_leg_mag' 
-    region = pd.Series(["Upper Extremities"] * len(bilateral_hand_mag), name='Region of Body') # TODO: add '+ ["Lower Extremities"] * len(bilateral_leg_mag)'
-    bilat_temp = pd.DataFrame(bilateral_mag_merge)
-    bilateral_mag_df = bilat_temp.join(region)
-
     # TODO: pass in data for legs
     data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
-    return df, bilateral_mag_df.to_dict('records') 
+    return df
 
 
 # output visualizations based on checklist options
@@ -258,16 +218,14 @@ def preprocessing(url_pathname):
           Output('graph3', 'children'),
           Output('graph4', 'children'),
           Input('checklist', 'value'),
-          Input('filter-data', 'data'),
-          State('bilateral-mag', 'data')
+          Input('filter-data', 'data')
 )
-def display_page(checklist_options, data, bilat_mag):
+def display_page(checklist_options, data):
     if data is not None:
         # initialize variables needed
         i = 0
         graphs = [[]] * 4
         data = pd.DataFrame(data) 
-        bilat_mag = pd.DataFrame(bilat_mag)
 
         # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
         # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
