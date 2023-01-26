@@ -50,7 +50,6 @@ header = html.Div(
         # create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
-                {'label': ' Box Plots', 'value': 'Box Plots'},
                 {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
                 {'label': ' Pie Graph', 'value': 'Pie Graph'},
@@ -90,10 +89,6 @@ content = html.Div(
         dbc.Card(id='card3', children=dbc.CardBody(html.Div(id='graph3'))),
         html.Pre(),
         dbc.Card(id='card4', children=dbc.CardBody(html.Div(id='graph4'))),
-        html.Pre(),
-        dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
-        html.Pre(),
-        dbc.Card(id='card6', children=dbc.CardBody(html.Div(id='graph6'))),
         dcc.Store(id='filter-data', storage_type='session'),
         dcc.Store(id='bilateral-mag', storage_type='session')
     ],
@@ -262,8 +257,6 @@ def preprocessing(url_pathname):
           Output('graph2', 'children'),
           Output('graph3', 'children'),
           Output('graph4', 'children'),
-          Output('graph5', 'children'),
-          Output('graph6', 'children'),
           Input('checklist', 'value'),
           Input('filter-data', 'data'),
           State('bilateral-mag', 'data')
@@ -272,7 +265,7 @@ def display_page(checklist_options, data, bilat_mag):
     if data is not None:
         # initialize variables needed
         i = 0
-        graphs = [[]] * 6
+        graphs = [[]] * 4
         data = pd.DataFrame(data) 
         bilat_mag = pd.DataFrame(bilat_mag)
 
@@ -506,34 +499,6 @@ def display_page(checklist_options, data, bilat_mag):
 
             i += 1
 
-        if 'Box Plots' in checklist_options:
-            # creating paretic limb acceleration dataset for boxplots
-            num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-            paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
-            region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
-            paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
-            paretic_acc_boxplot_df = paretic_acc_temp.join(region)
-
-            # plot boxplots for paretic limb acceleration
-            paretic_acc_boxplot = go.Figure()
-            paretic_acc_boxplot.add_trace(go.Box(x=paretic_acc_boxplot_df["Region of Body"], 
-                                                y=paretic_acc_boxplot_df["Paretic Acceleration"],
-                                                boxmean='sd')) # represent mean and standard deviation
-            paretic_acc_boxplot.update_layout(title_text="Summary of Paretic Limb Acceleration", 
-                                            xaxis_title="Region of Body",  
-                                            yaxis_title="Paretic Acceleration")
-            graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
-
-            # plot boxplots for bilateral magnitude
-            bilat_mag_boxplot = go.Figure()
-            bilat_mag_boxplot.add_trace(go.Box(x=bilat_mag["Region of Body"], 
-                                            y=bilat_mag["Bilateral Magnitude"],
-                                            boxmean='sd')) # represent mean and standard deviation
-            bilat_mag_boxplot.update_layout(title_text="Summary of Bilateral Magnitude", 
-                                            xaxis_title="Region of Body",  
-                                            yaxis_title="Bilateral Magnitude")
-            graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
-
-        return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
+        return graphs[0], graphs[1], graphs[2], graphs[3]
     else:
         raise PreventUpdate
