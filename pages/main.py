@@ -258,12 +258,12 @@ def preprocessing(url_pathname):
 
 
 # output visualizations based on checklist options
-@callback(Output('card1', 'children'),
-          Output('card2', 'children'),
-          Output('card3', 'children'),
-          Output('card4', 'children'),
-          Output('card5', 'children'),
-          Output('card6', 'children'),
+@callback(Output('graph1', 'children'),
+          Output('graph2', 'children'),
+          Output('graph3', 'children'),
+          Output('graph4', 'children'),
+          Output('graph5', 'children'),
+          Output('graph6', 'children'),
           Input('checklist', 'value'),
           Input('filter-data', 'data'),
           State('bilateral-mag', 'data')
@@ -333,7 +333,19 @@ def display_page(checklist_options, data, bilat_mag):
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
             fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
-            graphs[i] = dcc.Graph(figure=fig)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Severity of Limb Impairment", id="tooltip1", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "Taking advantage of the positive correlation between the use ratio and ARAT scores, " 
+                        "a use ratio of 0.5 is used as the threshold to indicate severity of the limb impairment. "
+                        "“Severe” is shown with red, with an ARAT score of 19 or less (score of 0-1). "
+                        "“Moderate” is shown with green, with an ARAT score of 19 or above (score of 2-3).",
+                        target="tooltip1"
+                    ),
+                    dcc.Graph(figure=fig)
+                ]
+            )
             i += 1
         if 'Pie Graph' in checklist_options:
 
@@ -375,8 +387,19 @@ def display_page(checklist_options, data, bilat_mag):
                 if idx == N:
                     column = 1
 
-            pie_graph_arm.update(layout_title_text='Hourly Paretic Arm Use (Target = 50 minutes)')
-            graphs[i] = dcc.Graph(figure=pie_graph_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 50 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These pie charts help visualize the amount of movement seen by the paretic limb compared " 
+                        "to the goal set by the doctor, which in our example, is set to 50 minutes per hour. The blue " 
+                        "ring represents the amount of minutes of movement seen by the paretic limb, whereas the " 
+                        "red ring represents the remaining time that the paretic limb should move to meet the doctor’s goal. " 
+                        , target="tooltip2"
+                    ),
+                    dcc.Graph(figure=pie_graph_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
@@ -412,11 +435,21 @@ def display_page(checklist_options, data, bilat_mag):
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
+            scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
 
-            scatter_plot_arm.update_layout(title_text="Use Ratio of Arms Relative to Typical Range", 
-            xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
-
-            graphs[i] = dcc.Graph(figure=scatter_plot_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Use Ratio of Arms Relative to Typical Range", id="tooltip3", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These scatter plots help visualize the movement use ratio between paretic and " 
+                        "non-paretic limbs (split into upper and lower extremities). The two dashed red " 
+                        "lines represent an expected threshold for the use ratio between equally performing " 
+                        "limbs. The blue dots are the actual use ratios collected from the sensor data. "
+                        , target="tooltip3"
+                    ),
+                    dcc.Graph(figure=scatter_plot_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
@@ -445,10 +478,22 @@ def display_page(checklist_options, data, bilat_mag):
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
 
-            bar_graph_arm.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Arms', 
-            xaxis_title="Hours",  yaxis_title="Activity Count")
+            bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
 
-            graphs[i] = dcc.Graph(figure=bar_graph_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Activity Count of Paretic and Non-Paretic Arms", id="tooltip4", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These bar graphs help visualize the number of activity counts collected from "
+                        "the paretic and non-paretic limbs (split into upper and lower extremities). Ideally, " 
+                        "the two colors stacked on top of eachother will be equal meaning the paretic and "
+                        "non-paretic limbs were used a similar amount. This graph should be able to help doctors "
+                        "quickly evaluate any differences seen between the movement in paretic/non-paretic limbs. "
+                        , target="tooltip4"
+                    ),
+                    dcc.Graph(figure=bar_graph_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
