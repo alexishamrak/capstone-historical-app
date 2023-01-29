@@ -50,7 +50,6 @@ header = html.Div(
         # create horizontal checklist for user to select which visualizations to display
         dcc.Checklist(
             options=[
-                {'label': ' Box Plots', 'value': 'Box Plots'},
                 {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
                 {'label': ' Pie Graph', 'value': 'Pie Graph'},
@@ -90,10 +89,6 @@ content = html.Div(
         dbc.Card(id='card3', children=dbc.CardBody(html.Div(id='graph3'))),
         html.Pre(),
         dbc.Card(id='card4', children=dbc.CardBody(html.Div(id='graph4'))),
-        html.Pre(),
-        dbc.Card(id='card5', children=dbc.CardBody(html.Div(id='graph5'))),
-        html.Pre(),
-        dbc.Card(id='card6', children=dbc.CardBody(html.Div(id='graph6'))),
         dcc.Store(id='filter-data', storage_type='session'),
         dcc.Store(id='bilateral-mag', storage_type='session')
     ],
@@ -151,36 +146,12 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
 
 
-def calc_mag(x_filt, y_filt, z_filt):
-    mag = np.sqrt(x_filt ** 2 + y_filt ** 2 + z_filt ** 2)
-    return mag
-
-
-def bilateral_mag(leftside_mag, rightside_mag, left_time, right_time):
-    # merge time and magnitude datasets for left and right limb
-    left = np.transpose(np.vstack((left_time, leftside_mag)))
-    right = np.transpose(np.vstack((right_time, rightside_mag)))
-    # convert dataset into a Pandas Dataframe and add column names
-    leftside_mag_df = pd.DataFrame(left, columns=['time', 'left_mag'])
-    rightside_mag_df = pd.DataFrame(right, columns=['time', 'right_mag'])
-    # merge datasets based on time column
-    if len(left_time) > len(right_time):
-        merged_dataset = leftside_mag_df.merge(rightside_mag_df, on='time', how='left')
-    else:
-        merged_dataset = rightside_mag_df.merge(leftside_mag_df, on='time', how='left')
-
-    bilat_mag = np.nansum([merged_dataset['left_mag'], merged_dataset['right_mag']], axis=0)
-
-    return bilat_mag
-
-
 ############################################### Callbacks ###############################################
 
 # preprocess data
 @callback(Output('filter-data', 'data'),
-          Output('bilateral-mag', 'data'),
-          Input('url', 'pathname'))
-
+          Input('url', 'pathname')
+)
 def preprocessing(url_pathname):
     left_hand = pd.read_csv('assets/left_hand_lm.csv')
     right_hand = pd.read_csv('assets/right_hand_hm.csv')
@@ -235,46 +206,26 @@ def preprocessing(url_pathname):
         hand_use_ratio_final.append(hand_use_ratio)
         h_paretic_limb_use_final.append(h_paretic_limb_use)
 
-    lh_mag = calc_mag(lh_x_hat, lh_y_hat, lh_z_hat)
-    rh_mag = calc_mag(rh_x_hat, rh_y_hat, rh_z_hat)
-    # ll_mag = calc_mag(ll_X_hat, ll_Y_hat, ll_Z_hat)
-    # rl_mag = calc_mag(rl_X_hat, rl_Y_hat, rl_Z_hat)
-
-    bilateral_hand_mag = bilateral_mag(lh_mag, rh_mag, lh_time, rh_time)
-    # print(f"Bilateral magnitude between hands is: {bilateral_hand_mag}")
-    # bilateral_leg_mag = bilateral_mag(ll_mag, rl_mag)
-    # print(f"Bilateral magnitude between legs is: {bilateral_leg_mag}")
-
-    # create dataframe for bilateral magnitude (for boxplots)
-    bilateral_mag_merge = pd.Series(bilateral_hand_mag, name='Bilateral Magnitude') # TODO: add 'bilateral_leg_mag' 
-    region = pd.Series(["Upper Extremities"] * len(bilateral_hand_mag), name='Region of Body') # TODO: add '+ ["Lower Extremities"] * len(bilateral_leg_mag)'
-    bilat_temp = pd.DataFrame(bilateral_mag_merge)
-    bilateral_mag_df = bilat_temp.join(region)
-
     # TODO: pass in data for legs
     data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
-    return df, bilateral_mag_df.to_dict('records') 
+    return df
 
 
 # output visualizations based on checklist options
-@callback(Output('card1', 'children'),
-          Output('card2', 'children'),
-          Output('card3', 'children'),
-          Output('card4', 'children'),
-          Output('card5', 'children'),
-          Output('card6', 'children'),
+@callback(Output('graph1', 'children'),
+          Output('graph2', 'children'),
+          Output('graph3', 'children'),
+          Output('graph4', 'children'),
           Input('checklist', 'value'),
-          Input('filter-data', 'data'),
-          State('bilateral-mag', 'data')
+          Input('filter-data', 'data')
 )
-def display_page(checklist_options, data, bilat_mag):
+def display_page(checklist_options, data):
     if data is not None:
         # initialize variables needed
         i = 0
-        graphs = [[]] * 6
+        graphs = [[]] * 4
         data = pd.DataFrame(data) 
-        bilat_mag = pd.DataFrame(bilat_mag)
 
         # generally, the paretic limb will have lower activity counts than its non-paretic counterpart. find an 
         # incident of low use ratio and classify limbs as paretic or non-paretic (limb use will be lower for paretic limb)
@@ -333,7 +284,19 @@ def display_page(checklist_options, data, bilat_mag):
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
             fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
-            graphs[i] = dcc.Graph(figure=fig)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Severity of Limb Impairment", id="tooltip1", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "Taking advantage of the positive correlation between the use ratio and ARAT scores, " 
+                        "a use ratio of 0.5 is used as the threshold to indicate severity of the limb impairment. "
+                        "“Severe” is shown with red, with an ARAT score of 19 or less (score of 0-1). "
+                        "“Moderate” is shown with green, with an ARAT score of 19 or above (score of 2-3).",
+                        target="tooltip1"
+                    ),
+                    dcc.Graph(figure=fig)
+                ]
+            )
             i += 1
         if 'Pie Graph' in checklist_options:
 
@@ -375,8 +338,19 @@ def display_page(checklist_options, data, bilat_mag):
                 if idx == N:
                     column = 1
 
-            pie_graph_arm.update(layout_title_text='Hourly Paretic Arm Use (Target = 50 minutes)')
-            graphs[i] = dcc.Graph(figure=pie_graph_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 50 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These pie charts help visualize the amount of movement seen by the paretic limb compared " 
+                        "to the goal set by the doctor, which in our example, is set to 50 minutes per hour. The blue " 
+                        "ring represents the amount of minutes of movement seen by the paretic limb, whereas the " 
+                        "red ring represents the remaining time that the paretic limb should move to meet the doctor’s goal. " 
+                        , target="tooltip2"
+                    ),
+                    dcc.Graph(figure=pie_graph_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
@@ -412,11 +386,21 @@ def display_page(checklist_options, data, bilat_mag):
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
+            scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
 
-            scatter_plot_arm.update_layout(title_text="Use Ratio of Arms Relative to Typical Range", 
-            xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
-
-            graphs[i] = dcc.Graph(figure=scatter_plot_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Use Ratio of Arms Relative to Typical Range", id="tooltip3", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These scatter plots help visualize the movement use ratio between paretic and " 
+                        "non-paretic limbs (split into upper and lower extremities). The two dashed red " 
+                        "lines represent an expected threshold for the use ratio between equally performing " 
+                        "limbs. The blue dots are the actual use ratios collected from the sensor data. "
+                        , target="tooltip3"
+                    ),
+                    dcc.Graph(figure=scatter_plot_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
@@ -445,10 +429,22 @@ def display_page(checklist_options, data, bilat_mag):
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
 
-            bar_graph_arm.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Arms', 
-            xaxis_title="Hours",  yaxis_title="Activity Count")
+            bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
 
-            graphs[i] = dcc.Graph(figure=bar_graph_arm)
+            graphs[i] = html.Div(
+                [
+                    html.H4([html.Span("Activity Count of Paretic and Non-Paretic Arms", id="tooltip4", style={'paddingLeft': '3%'}),]),
+                    dbc.Tooltip(
+                        "These bar graphs help visualize the number of activity counts collected from "
+                        "the paretic and non-paretic limbs (split into upper and lower extremities). Ideally, " 
+                        "the two colors stacked on top of eachother will be equal meaning the paretic and "
+                        "non-paretic limbs were used a similar amount. This graph should be able to help doctors "
+                        "quickly evaluate any differences seen between the movement in paretic/non-paretic limbs. "
+                        , target="tooltip4"
+                    ),
+                    dcc.Graph(figure=bar_graph_arm)
+                ]
+            )
 
             # Code for leg graph below, currently structured to be below arm graph
             # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
@@ -461,34 +457,6 @@ def display_page(checklist_options, data, bilat_mag):
 
             i += 1
 
-        if 'Box Plots' in checklist_options:
-            # creating paretic limb acceleration dataset for boxplots
-            num_datapoints = data.shape[0] # ASSUMPTION: hands/legs have the same number of datapoints
-            paretic_limbs_merge = pd.Series(data.iloc[:, paretic_arm_idx], name='Paretic Acceleration') # TODO: add 'Limb Use LL'
-            region = pd.Series(["Paretic Arm"] * num_datapoints, name='Region of Body') # TODO: add '+ ["Paretic Leg"] * num_datapoints'
-            paretic_acc_temp = pd.DataFrame(paretic_limbs_merge)
-            paretic_acc_boxplot_df = paretic_acc_temp.join(region)
-
-            # plot boxplots for paretic limb acceleration
-            paretic_acc_boxplot = go.Figure()
-            paretic_acc_boxplot.add_trace(go.Box(x=paretic_acc_boxplot_df["Region of Body"], 
-                                                y=paretic_acc_boxplot_df["Paretic Acceleration"],
-                                                boxmean='sd')) # represent mean and standard deviation
-            paretic_acc_boxplot.update_layout(title_text="Summary of Paretic Limb Acceleration", 
-                                            xaxis_title="Region of Body",  
-                                            yaxis_title="Paretic Acceleration")
-            graphs[i] = dcc.Graph(figure=paretic_acc_boxplot)
-
-            # plot boxplots for bilateral magnitude
-            bilat_mag_boxplot = go.Figure()
-            bilat_mag_boxplot.add_trace(go.Box(x=bilat_mag["Region of Body"], 
-                                            y=bilat_mag["Bilateral Magnitude"],
-                                            boxmean='sd')) # represent mean and standard deviation
-            bilat_mag_boxplot.update_layout(title_text="Summary of Bilateral Magnitude", 
-                                            xaxis_title="Region of Body",  
-                                            yaxis_title="Bilateral Magnitude")
-            graphs[i+1] = dcc.Graph(figure=bilat_mag_boxplot)
-
-        return graphs[0], graphs[1], graphs[2], graphs[3], graphs[4], graphs[5]
+        return graphs[0], graphs[1], graphs[2], graphs[3]
     else:
         raise PreventUpdate
