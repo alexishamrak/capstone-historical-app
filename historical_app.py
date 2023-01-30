@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import dash
-from dash import dcc, html, callback, Input, Output, State
+from dash import Dash, dcc, html, callback, Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 from plotly.subplots import make_subplots
@@ -11,8 +11,9 @@ import plotly.express as px
 from PIL import Image
 import plotly.graph_objects as go
 
-# to indicate this is a page of the app
-dash.register_page(__name__, title="JEJARD Analytics")
+# initialize application
+app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.title = 'JEJARD Analytics'
 
 ############################################### Layout ###############################################
 
@@ -64,17 +65,20 @@ header = html.Div(
 sidebar = html.Div(
     [
         # display patient information
-        # TODO: automate this
-        html.H4('Patient Information', style={'position': 'fixed', 'left': '1%', 'top': '7%'}),
-        html.P('Age: XX', style={'position': 'fixed', 'left': '2%', 'top': '12%'}),
-        html.P('Weight: XX', style={'position': 'fixed', 'left': '2%', 'top': '15%'}),
-        html.P('Admitted: DD/MM/YYYY', style={'position': 'fixed', 'left': '2%', 'top': '18%'}),
-        html.P('Hand Dominance: XX', style={'position': 'fixed', 'left': '2%', 'top': '21%'}),
+        html.H4('Ramriez Santos', style={'position': 'fixed', 'left': '1%', 'top': '7%'}),
+        html.P('Age: 67', style={'position': 'fixed', 'left': '2%', 'top': '12%'}),
+        html.P('Weight: 77kg', style={'position': 'fixed', 'left': '2%', 'top': '15%'}),
+        html.P('Admitted: 28/01/2023', style={'position': 'fixed', 'left': '2%', 'top': '18%'}),
+        html.P('Hand Dominance: Right', style={'position': 'fixed', 'left': '2%', 'top': '21%'}),
         html.P('Medications:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '26%'}),
-        html.Li('Blood Thinner ABC', style={'position': 'fixed', 'left': '3%', 'top': '29%'}),
-        html.Li('Anti Epileptic DEF', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
-        html.P('Other Medical Diagnoses:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '36%'}),
-        html.Li('XYZ', style={'position': 'fixed', 'left': '3%', 'top': '39%'}),
+        html.Li('Thrombolytic (tPA)', style={'position': 'fixed', 'left': '3%', 'top': '29%'}),
+        html.Li('Acetylsalicyclic Acid, Aspirin', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
+        html.Li('Benazepril (Lotensin)', style={'position': 'fixed', 'left': '3%', 'top': '35%'}),
+        html.P('Stroke Information:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '39%'}),
+        html.Li('ARAT Score: 18 (Right Arm)', style={'position': 'fixed', 'left': '3%', 'top': '42%'}),
+        html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
+        html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
+        html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
     ],
     style=SIDEBAR_STYLE,
 )
@@ -95,7 +99,7 @@ content = html.Div(
     style=CONTENT_STYLE
 )
 
-layout = html.Div([header, sidebar, content])
+app.layout = html.Div([header, sidebar, content])
 
 
 #################################### functions ###############################################################
@@ -150,9 +154,9 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
 
 # preprocess data
 @callback(Output('filter-data', 'data'),
-          Input('url', 'pathname')
+          Input('checklist', 'value'),
 )
-def preprocessing(url_pathname):
+def preprocessing(checklist):
     left_arm = pd.read_csv('assets/left_hand_lm.csv')
     right_arm = pd.read_csv('assets/right_hand_hm.csv')
 
@@ -241,7 +245,7 @@ def display_page(checklist_options, data):
             moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
             
             # assign color to limbs based on severity of movement
-            color_LA, color_RA, color_LL, color_RL = moderate, moderate, moderate, moderate 
+            color_LA, color_RA = moderate, moderate
             if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
                 if 'RA' in data.columns[paretic_arm_idx]:
                     color_RA = severe
@@ -256,10 +260,6 @@ def display_page(checklist_options, data):
                         im.putpixel( (x,y), color_LA) 
                     if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
                         im.putpixel( (x,y), color_RA) 
-                    if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
-                        im.putpixel( (x,y), color_LL) 
-                    if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
-                        im.putpixel( (x,y), color_RL) 
             
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
@@ -392,3 +392,8 @@ def display_page(checklist_options, data):
         return graphs[0], graphs[1], graphs[2], graphs[3]
     else:
         raise PreventUpdate
+
+
+# run application       
+if __name__ == '__main__':
+	app.run_server(debug=True)
