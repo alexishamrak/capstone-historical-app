@@ -241,7 +241,7 @@ def display_page(checklist_options, data):
             moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
             
             # assign color to limbs based on severity of movement
-            color_LA, color_RA, color_LL, color_RL = moderate, moderate, moderate, moderate 
+            color_LA, color_RA = moderate, moderate
             if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
                 if 'RA' in data.columns[paretic_arm_idx]:
                     color_RA = severe
@@ -256,10 +256,6 @@ def display_page(checklist_options, data):
                         im.putpixel( (x,y), color_LA) 
                     if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
                         im.putpixel( (x,y), color_RA) 
-                    if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
-                        im.putpixel( (x,y), color_LL) 
-                    if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
-                        im.putpixel( (x,y), color_RL) 
             
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
