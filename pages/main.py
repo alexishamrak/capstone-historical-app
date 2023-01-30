@@ -153,62 +153,52 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
           Input('url', 'pathname')
 )
 def preprocessing(url_pathname):
-    left_hand = pd.read_csv('assets/left_hand_lm.csv')
-    right_hand = pd.read_csv('assets/right_hand_hm.csv')
-    # left_leg = pd.read_csv('Assets/left_leg_lm.csv')
-    # right_leg = pd.read_csv('Assets/right_leg_hm.csv')
+    left_arm = pd.read_csv('assets/left_hand_lm.csv')
+    right_arm = pd.read_csv('assets/right_hand_hm.csv')
 
     freq = 50
     epoch = 1
 
-    lh_time, lh_x, lh_y, lh_z, lh_raw = sorting_data(left_hand)
-    rh_time, rh_x, rh_y, rh_z, rh_raw = sorting_data(right_hand)
-    # ll_time, ll_X, ll_Y, ll_Z, ll_raw = sorting_data(left_leg)
-    # rl_time, rl_X, rl_Y, rl_Z, rl_raw = sorting_data(right_leg)
+    la_time, la_x, la_y, la_z, la_raw = sorting_data(left_arm)
+    ra_time, ra_x, ra_y, ra_z, ra_raw = sorting_data(right_arm)
 
     # creating arrays to store the start and end indices of time segments
     time_interval = 60  # should be changed to 3600s
     last_index_array = []
     first_index_array = [0]
-    final_time = np.max(lh_time) # ASSUMPTION: lh_time and rh_time are the same (raspberry pi can ensure this)
+    final_time = np.max(la_time) # ASSUMPTION: lh_time and rh_time are the same (raspberry pi can ensure this)
     iteration = int(np.floor(final_time/time_interval))
-    data_spacing = np.max(np.where(lh_time[lh_time < time_interval]))
+    data_spacing = np.max(np.where(la_time[la_time < time_interval]))
 
     for i in range(iteration):
         val = data_spacing * (i + 1)
         last_index_array.append(val)
         first_index_array.append(val + 1)
 
-    last_index_array.append(len(lh_time) - 1)
+    last_index_array.append(len(la_time) - 1)
 
-    lh_x_hat, lh_y_hat, lh_z_hat = filter_data(lh_x, lh_y, lh_z)
-    rh_x_hat, rh_y_hat, rh_z_hat = filter_data(rh_x, rh_y, rh_z)
-    # ll_X_hat, ll_Y_hat, ll_Z_hat = filter_data(ll_X, ll_Y, ll_Z)
-    # rl_X_hat, rl_Y_hat, rl_Z_hat = filter_data(rl_X, rl_Y, rl_Z)
+    la_x_hat, la_y_hat, la_z_hat = filter_data(la_x, la_y, la_z)
+    ra_x_hat, ra_y_hat, ra_z_hat = filter_data(ra_x, ra_y, ra_z)
 
-    h_non_paretic_limb_use_final = []
-    hand_use_ratio_final = []
-    h_paretic_limb_use_final = []
+    a_non_paretic_limb_use_final = []
+    arm_use_ratio_final = []
+    a_paretic_limb_use_final = []
 
     for i in range(len(last_index_array)):
-        lh_counts, lh_count_mag = collecting_counts(lh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
-        rh_counts, rh_count_mag = collecting_counts(rh_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
-        # ll_counts, ll_count_mag = collecting_counts(ll_raw)
-        # rl_counts, rl_count_mag = collecting_counts(rl_raw)
+        la_counts, la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
+        ra_counts, ra_count_mag = collecting_counts(ra_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
 
-        tot_time = np.ceil(lh_time[last_index_array[i]] - lh_time[first_index_array[i]])
+        tot_time_arm = np.ceil(la_time[last_index_array[i]] - la_time[first_index_array[i]])
 
         # ASSUMPTION: left and right time is the same
-        hand_use_ratio, h_paretic_limb_use, h_non_paretic_limb_use = use_ratio(lh_count_mag, rh_count_mag, tot_time)
-        # leg_use_ratio, l_paretic_limb_use, l_non_paretic_limb_use = use_ratio(ll_count_mag, rl_count_mag, final_time)
+        arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
 
-        h_non_paretic_limb_use_final.append(h_non_paretic_limb_use)
-        hand_use_ratio_final.append(hand_use_ratio)
-        h_paretic_limb_use_final.append(h_paretic_limb_use)
+        a_non_paretic_limb_use_final.append(a_non_paretic_limb_use)
+        arm_use_ratio_final.append(arm_use_ratio)
+        a_paretic_limb_use_final.append(a_paretic_limb_use)
 
-    # TODO: pass in data for legs
-    data = np.transpose([h_non_paretic_limb_use_final, h_paretic_limb_use_final, hand_use_ratio_final]) 
-    df = pd.DataFrame(data, columns=['Limb Use RH', 'Limb Use LH', 'Use Ratio U']).to_dict('records')
+    data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U']).to_dict('records')
     return df
 
 
@@ -237,11 +227,6 @@ def display_page(checklist_options, data):
         if len(trouble_idx_U):
             if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
                 non_paretic_arm_idx, paretic_arm_idx = 1, 0
-        # trouble_idx_L = data['Use Ratio L'][data['Use Ratio L'] < thres].index
-        # non_paretic_leg_idx, paretic_leg_idx = 3, 4 # paretic limb = left
-        # if len(trouble_idx_L):
-        #     if data['Limb Use LL'][trouble_idx_L[0]] > data['Limb Use RL'][trouble_idx_L[0]]: # paretic limb = right
-        #         non_paretic_leg_idx, paretic_leg_idx = 4, 3
             
         # populating visualizations based on checklist options
         # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
@@ -256,26 +241,21 @@ def display_page(checklist_options, data):
             moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
             
             # assign color to limbs based on severity of movement
-            color_LH, color_RH, color_LL, color_RL = moderate, moderate, moderate, moderate 
+            color_LA, color_RA, color_LL, color_RL = moderate, moderate, moderate, moderate 
             if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
-                if 'RH' in data.columns[paretic_arm_idx]:
-                    color_RH = severe
+                if 'RA' in data.columns[paretic_arm_idx]:
+                    color_RA = severe
                 else:
-                    color_LH = severe 
-            # if len(trouble_idx_L):
-            #     if 'RL' in data.columns[paretic_arm_idx]:
-            #         color_RL = severe
-            #     else:
-            #         color_LL = severe 
+                    color_LA = severe 
             
             # change color of the image pixels
             for x in range(width):    
                 for y in range(height):  
                     current_color = im.getpixel( (x,y) )
                     if (x < 288) and (current_color != (255, 255, 255) ): # left arm
-                        im.putpixel( (x,y), color_LH) 
+                        im.putpixel( (x,y), color_LA) 
                     if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
-                        im.putpixel( (x,y), color_RH) 
+                        im.putpixel( (x,y), color_RA) 
                     if (x < 380) and (y > 501) and (current_color != (255, 255, 255) ): # left leg
                         im.putpixel( (x,y), color_LL) 
                     if (x > 380) and (y > 501) and (current_color != (255, 255, 255) ): # right leg
@@ -302,17 +282,12 @@ def display_page(checklist_options, data):
 
             paretic_arm = data.iloc[:, paretic_arm_idx]
             paretic_arm = np.floor(np.array(paretic_arm))
-            # paretic_leg = data.iloc[:, paretic_leg_idx]
-            # paretic_leg = np.floor(np.array(paretic_leg))
 
             # TODO: Adjust time vector based on final dataset length
             time = [50, 50, 50, 50, 50, 50]
             remaining_arm_time = np.ceil(time - paretic_arm)
-            labels = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
-            # remaining_leg_time = np.ceil(time - paretic_leg)
-            # labels = ['Paretic Leg Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+            labels_arm = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
 
-            # ASSUMPTION: leg graph will have the same number of subplots, specs, and target time
             # TODO: Will automate N, M, specs, and subplot_titles
             # TODO: Will have to change depending on subplot size for full data (cannot do now)
             N = 2
@@ -328,7 +303,7 @@ def display_page(checklist_options, data):
             for idx in range(len(paretic_arm)):
                 if remaining_arm_time[idx] < 0:
                     remaining_arm_time[idx] = 0
-                pie_graph_arm.add_trace(go.Pie(labels=labels, values=[paretic_arm[idx], remaining_arm_time[idx]], 
+                pie_graph_arm.add_trace(go.Pie(labels=labels_arm, values=[paretic_arm[idx], remaining_arm_time[idx]], 
                 name=idx), row, column)
                 pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
                 if idx >= N and row < N:
@@ -352,33 +327,12 @@ def display_page(checklist_options, data):
                 ]
             )
 
-            # Code for leg graph below, currently structured to be below arm graph
-            # pie_graph_leg = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
-
-            # for idx in range(len(paretic_leg)):
-            #     if remaining_leg_time[idx] < 0:
-            #         remaining_leg_time[idx] = 0
-            #     pie_graph_leg.add_trace(go.Pie(labels=labels, values=[paretic_leg[idx], remaining_leg_time[idx]], 
-            #     name=idx), row, column)
-            #     pie_graph_leg.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-            #     if idx >= N and row < N:
-            #         row = row + 1
-            #     if column < M:
-            #         column = column + 1
-            #     if idx == N:
-            #         column = 1
-
-            # pie_graph_leg.update(layout_title_text='Hourly Paretic Leg Use (Target = 50 minutes)')
-            # graphs[i+1] = dcc.Graph(figure=pie_graph_leg)
-
             i += 1
 
         if 'Scatter Plot' in checklist_options:
             
             use_ratio_arm = data['Use Ratio U']
-            # use_Ratio_leg = data['Use Ratio U']
 
-            # ASSUMPTION: vector length of leg and arm use ratio will be the same
             num_dots = len(use_ratio_arm) + 1
             ind = np.arange(1, num_dots) 
 
@@ -402,25 +356,12 @@ def display_page(checklist_options, data):
                 ]
             )
 
-            # Code for leg graph below, currently structured to be below arm graph
-            # scatter_plot_leg = px.scatter(x=ind, y=use_ratio_leg)
-            # scatter_plot_leg.update_traces(marker_size=20)
-            # scatter_plot_leg.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
-            # scatter_plot_leg.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
-
-            # scatter_plot_leg.update_layout(title_text="Use Ratio of Legs Relative to Typical Range", 
-            # xaxis_title="Hours",  yaxis_title="Leg Use Ratio", yaxis_range=[0,2])
-
-            # graphs[i+1] = dcc.Graph(figure=scatter_plot)
-
             i += 1
 
         if 'Bar Graph' in checklist_options:
 
             paretic_arm = data.iloc[:, paretic_arm_idx]
             non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
-            # paretic_leg = data.iloc[:, paretic_leg_idx]
-            # non_paretic_leg = data.iloc[:, non_paretic_leg_idx]
 
             # ASSUMPTION: vector length of all four limbs is the same
             num_bars = len(paretic_arm) + 1
@@ -445,15 +386,6 @@ def display_page(checklist_options, data):
                     dcc.Graph(figure=bar_graph_arm)
                 ]
             )
-
-            # Code for leg graph below, currently structured to be below arm graph
-            # bar_graph_leg = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_leg), 
-            # go.Bar(name='Paretic', x=ind, y=paretic_leg)])
-
-            # bar_graph_leg.update_layout(barmode='stack', title_text='Activity Count of Paretic and Non-Paretic Legs', 
-            #  xaxis_title="Hours",  yaxis_title="Activity Count")
-
-            # graphs[i+1] = dcc.Graph(figure=bar_graph_leg)
 
             i += 1
 
