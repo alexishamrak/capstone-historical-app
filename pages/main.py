@@ -52,9 +52,9 @@ header = html.Div(
             options=[
                 {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
-                {'label': ' Pie Graph', 'value': 'Pie Graph'},
+                {'label': ' Line Graph', 'value': 'Line Graph'},
                 {'label': ' Human Silhouette', 'value': 'Human Silhouette'},
-            ], value=['Human Silhouette', 'Pie Graph'], id='checklist',
+            ], value=['Human Silhouette', 'Line Graph'], id='checklist',
             inline=True, labelStyle={'color': 'white', 'float': 'right', 'marginRight': '1rem'}
         ),
     ],
@@ -229,7 +229,7 @@ def display_page(checklist_options, data):
                 non_paretic_arm_idx, paretic_arm_idx = 1, 0
             
         # populating visualizations based on checklist options
-        # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
+        # in the following order: Human Silhouette > Line Graph > Scatter Plot > Bar Graph > Box Plots
         if 'Human Silhouette' in checklist_options:
             im = Image.open("assets/silhouette_bw.png") # open image
             width, height = im.size # get the size of the image
@@ -278,52 +278,41 @@ def display_page(checklist_options, data):
                 ]
             )
             i += 1
-        if 'Pie Graph' in checklist_options:
+        if 'Line Graph' in checklist_options:
 
             paretic_arm = data.iloc[:, paretic_arm_idx]
             paretic_arm = np.floor(np.array(paretic_arm))
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
+            non_paretic_arm = np.floor(np.array(non_paretic_arm))
+            diff = non_paretic_arm - paretic_arm
 
-            # TODO: Adjust time vector based on final dataset length
-            time = [50, 50, 50, 50, 50, 50]
-            remaining_arm_time = np.ceil(time - paretic_arm)
-            labels_arm = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+            hours = [1, 2, 3, 4, 5, 6]
+            x_range = len(hours)
 
-            # TODO: Will automate N, M, specs, and subplot_titles
-            # TODO: Will have to change depending on subplot size for full data (cannot do now)
-            N = 2
-            M = 3
-
-            # TODO: Will have to populate specs with size of full data (cannot do now)
-            specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
-            pie_graph_arm = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
-
-            row = 1
-            column = 1
-
-            for idx in range(len(paretic_arm)):
-                if remaining_arm_time[idx] < 0:
-                    remaining_arm_time[idx] = 0
-                pie_graph_arm.add_trace(go.Pie(labels=labels_arm, values=[paretic_arm[idx], remaining_arm_time[idx]], 
-                name=idx), row, column)
-                pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-                if idx >= N and row < N:
-                    row = row + 1
-                if column < M:
-                    column = column + 1
-                if idx == N:
-                    column = 1
+            line_graph_arm = go.Figure()
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
+            line_graph_arm.add_hline(y=40, line_dash="dash", line_color="red", annotation_text="Target")
+            
+            line_graph_arm.update_xaxes(range=[1,x_range], minor_griddash="solid")
+            line_graph_arm.update_yaxes(range=[-20, 60], minor_griddash="solid")
+            line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
+            line_graph_arm.update_traces(marker_size=14)
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 50 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 40 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
-                        "These pie charts help visualize the amount of movement seen by the paretic limb compared " 
-                        "to the goal set by the doctor, which in our example, is set to 50 minutes per hour. The blue " 
-                        "ring represents the amount of minutes of movement seen by the paretic limb, whereas the " 
-                        "red ring represents the remaining time that the paretic limb should move to meet the doctor’s goal. " 
+                        "This line graph helps visualize the amount of movement seen by the paretic and "
+                        "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
+                        "line is the difference between the non-paretic and paretic limb movement and "
+                        "the red line is the movement goal set by a doctor, which in our example, is "
+                        "40 minutes. The x-axis represents the hour when data was collected, whereas the "
+                        "y-axis represents the minutes of movement seen per hour from each limb. "
                         , target="tooltip2"
                     ),
-                    dcc.Graph(figure=pie_graph_arm)
+                    dcc.Graph(figure=line_graph_arm)
                 ]
             )
 
