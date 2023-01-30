@@ -65,17 +65,20 @@ header = html.Div(
 sidebar = html.Div(
     [
         # display patient information
-        # TODO: automate this
-        html.H4('Patient Information', style={'position': 'fixed', 'left': '1%', 'top': '7%'}),
-        html.P('Age: XX', style={'position': 'fixed', 'left': '2%', 'top': '12%'}),
-        html.P('Weight: XX', style={'position': 'fixed', 'left': '2%', 'top': '15%'}),
-        html.P('Admitted: DD/MM/YYYY', style={'position': 'fixed', 'left': '2%', 'top': '18%'}),
-        html.P('Hand Dominance: XX', style={'position': 'fixed', 'left': '2%', 'top': '21%'}),
+        html.H4('Ramriez Santos', style={'position': 'fixed', 'left': '1%', 'top': '7%'}),
+        html.P('Age: 67', style={'position': 'fixed', 'left': '2%', 'top': '12%'}),
+        html.P('Weight: 77kg', style={'position': 'fixed', 'left': '2%', 'top': '15%'}),
+        html.P('Admitted: 28/01/2023', style={'position': 'fixed', 'left': '2%', 'top': '18%'}),
+        html.P('Hand Dominance: Right', style={'position': 'fixed', 'left': '2%', 'top': '21%'}),
         html.P('Medications:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '26%'}),
-        html.Li('Blood Thinner ABC', style={'position': 'fixed', 'left': '3%', 'top': '29%'}),
-        html.Li('Anti Epileptic DEF', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
-        html.P('Other Medical Diagnoses:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '36%'}),
-        html.Li('XYZ', style={'position': 'fixed', 'left': '3%', 'top': '39%'}),
+        html.Li('Thrombolytic (tPA)', style={'position': 'fixed', 'left': '3%', 'top': '29%'}),
+        html.Li('Acetylsalicyclic Acid, Aspirin', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
+        html.Li('Benazepril (Lotensin)', style={'position': 'fixed', 'left': '3%', 'top': '35%'}),
+        html.P('Stroke Information:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '39%'}),
+        html.Li('ARAT Score: 18 (Right Arm)', style={'position': 'fixed', 'left': '3%', 'top': '42%'}),
+        html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
+        html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
+        html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
     ],
     style=SIDEBAR_STYLE,
 )
