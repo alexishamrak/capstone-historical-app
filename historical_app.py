@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import dash
-from dash import dcc, html, callback, Input, Output, State
+from dash import Dash, dcc, html, callback, Input, Output, State
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 from plotly.subplots import make_subplots
@@ -11,8 +11,9 @@ import plotly.express as px
 from PIL import Image
 import plotly.graph_objects as go
 
-# to indicate this is a page of the app
-dash.register_page(__name__, title="JEJARD Analytics")
+# initialize application
+app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.title = 'JEJARD Analytics'
 
 ############################################### Layout ###############################################
 
@@ -95,7 +96,7 @@ content = html.Div(
     style=CONTENT_STYLE
 )
 
-layout = html.Div([header, sidebar, content])
+app.layout = html.Div([header, sidebar, content])
 
 
 #################################### functions ###############################################################
@@ -150,9 +151,9 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
 
 # preprocess data
 @callback(Output('filter-data', 'data'),
-          Input('url', 'pathname')
+          Input('checklist', 'value'),
 )
-def preprocessing(url_pathname):
+def preprocessing(checklist):
     left_arm = pd.read_csv('assets/left_hand_lm.csv')
     right_arm = pd.read_csv('assets/right_hand_hm.csv')
 
@@ -388,3 +389,8 @@ def display_page(checklist_options, data):
         return graphs[0], graphs[1], graphs[2], graphs[3]
     else:
         raise PreventUpdate
+
+
+# run application       
+if __name__ == '__main__':
+	app.run_server(debug=True)
