@@ -53,9 +53,9 @@ header = html.Div(
             options=[
                 {'label': ' Bar Graph', 'value': 'Bar Graph'},
                 {'label': ' Scatter Plot', 'value': 'Scatter Plot'},
-                {'label': ' Pie Graph', 'value': 'Pie Graph'},
+                {'label': ' Line Graph', 'value': 'Line Graph'},
                 {'label': ' Human Silhouette', 'value': 'Human Silhouette'},
-            ], value=['Human Silhouette', 'Pie Graph'], id='checklist',
+            ], value=['Human Silhouette', 'Line Graph'], id='checklist',
             inline=True, labelStyle={'color': 'white', 'float': 'right', 'marginRight': '1rem'}
         ),
     ],
@@ -147,7 +147,7 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     use_ratio_calc = paretic_count / non_paretic_count
     paretic_limb_use = (paretic_count / len(paretic_count_mag)) * tot_time
     non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * tot_time
-    return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
+    return use_ratio_calc, paretic_limb_use, non_paretic_limb_use, paretic_count, non_paretic_count
 
 
 ############################################### Callbacks ###############################################
@@ -187,6 +187,8 @@ def preprocessing(checklist):
     a_non_paretic_limb_use_final = []
     arm_use_ratio_final = []
     a_paretic_limb_use_final = []
+    paretic_count_final = []
+    non_paretic_count_final = []
 
     for i in range(len(last_index_array)):
         la_counts, la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
@@ -194,15 +196,24 @@ def preprocessing(checklist):
 
         tot_time_arm = np.ceil(la_time[last_index_array[i]] - la_time[first_index_array[i]])
 
+        # for calculations left arm is considered paretic
         # ASSUMPTION: left and right time is the same
-        arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
+        arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use, paretic_count, non_paretic_count = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
 
         a_non_paretic_limb_use_final.append(a_non_paretic_limb_use)
         arm_use_ratio_final.append(arm_use_ratio)
         a_paretic_limb_use_final.append(a_paretic_limb_use)
+        paretic_count_final.append(paretic_count)
+        non_paretic_count_final.append(non_paretic_count)
 
-    data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final]) 
-    df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U']).to_dict('records')
+    
+    print(f'count: {non_paretic_count_final}')
+    print(f'limb use: {a_non_paretic_limb_use_final}')
+    
+    data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
+    
+    
     return df
 
 
@@ -227,13 +238,13 @@ def display_page(checklist_options, data):
         # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
         thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
         trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
-        non_paretic_arm_idx, paretic_arm_idx = 0, 1 # paretic limb = left
+        non_paretic_arm_idx, paretic_arm_idx = [0,3], [1,4] # paretic limb = left
         if len(trouble_idx_U):
             if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
-                non_paretic_arm_idx, paretic_arm_idx = 1, 0
+                non_paretic_arm_idx, paretic_arm_idx = [1,4], [0,3]
             
         # populating visualizations based on checklist options
-        # in the following order: Human Silhouette > Pie Graph > Scatter Plot > Bar Graph > Box Plots
+        # in the following order: Human Silhouette > Line Graph > Scatter Plot > Bar Graph > Box Plots
         if 'Human Silhouette' in checklist_options:
             im = Image.open("assets/silhouette_bw.png") # open image
             width, height = im.size # get the size of the image
@@ -247,7 +258,7 @@ def display_page(checklist_options, data):
             # assign color to limbs based on severity of movement
             color_LA, color_RA = moderate, moderate
             if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
-                if 'RA' in data.columns[paretic_arm_idx]:
+                if 'RA' in data.columns[paretic_arm_idx[0]]:
                     color_RA = severe
                 else:
                     color_LA = severe 
@@ -278,52 +289,41 @@ def display_page(checklist_options, data):
                 ]
             )
             i += 1
-        if 'Pie Graph' in checklist_options:
+        if 'Line Graph' in checklist_options:
 
-            paretic_arm = data.iloc[:, paretic_arm_idx]
+            paretic_arm = data.iloc[:, paretic_arm_idx[0]]
             paretic_arm = np.floor(np.array(paretic_arm))
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]
+            non_paretic_arm = np.floor(np.array(non_paretic_arm))
+            diff = non_paretic_arm - paretic_arm
 
-            # TODO: Adjust time vector based on final dataset length
-            time = [50, 50, 50, 50, 50, 50]
-            remaining_arm_time = np.ceil(time - paretic_arm)
-            labels_arm = ['Paretic Arm Use Time (minutes)', 'Remaining Time to Meet Goal (minutes)']
+            hours = [1, 2, 3, 4, 5, 6]
+            x_range = len(hours)
 
-            # TODO: Will automate N, M, specs, and subplot_titles
-            # TODO: Will have to change depending on subplot size for full data (cannot do now)
-            N = 2
-            M = 3
-
-            # TODO: Will have to populate specs with size of full data (cannot do now)
-            specs = [[{'type':'domain'}, {'type':'domain'}, {'type':'domain'}], [{'type':'domain'}, {'type':'domain'}, {'type':'domain'}]]
-            pie_graph_arm = make_subplots(rows=N, cols=M, specs=specs, subplot_titles=['Hour 1', 'Hour 2', 'Hour 3', 'Hour 4', 'Hour 5', 'Hour 6'])
-
-            row = 1
-            column = 1
-
-            for idx in range(len(paretic_arm)):
-                if remaining_arm_time[idx] < 0:
-                    remaining_arm_time[idx] = 0
-                pie_graph_arm.add_trace(go.Pie(labels=labels_arm, values=[paretic_arm[idx], remaining_arm_time[idx]], 
-                name=idx), row, column)
-                pie_graph_arm.update_traces(hoverinfo='label+percent', textinfo='value', hole=0.3)
-                if idx >= N and row < N:
-                    row = row + 1
-                if column < M:
-                    column = column + 1
-                if idx == N:
-                    column = 1
+            line_graph_arm = go.Figure()
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
+            line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
+            line_graph_arm.add_hline(y=40, line_dash="dash", line_color="red", annotation_text="Target")
+            
+            line_graph_arm.update_xaxes(range=[1,x_range], minor_griddash="solid")
+            line_graph_arm.update_yaxes(range=[-20, 60], minor_griddash="solid")
+            line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
+            line_graph_arm.update_traces(marker_size=14)
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 50 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 40 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
-                        "These pie charts help visualize the amount of movement seen by the paretic limb compared " 
-                        "to the goal set by the doctor, which in our example, is set to 50 minutes per hour. The blue " 
-                        "ring represents the amount of minutes of movement seen by the paretic limb, whereas the " 
-                        "red ring represents the remaining time that the paretic limb should move to meet the doctor’s goal. " 
+                        "This line graph helps visualize the amount of movement seen by the paretic and "
+                        "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
+                        "line is the difference between the non-paretic and paretic limb movement and "
+                        "the red line is the movement goal set by a doctor, which in our example, is "
+                        "40 minutes. The x-axis represents the hour when data was collected, whereas the "
+                        "y-axis represents the minutes of movement seen per hour from each limb. "
                         , target="tooltip2"
                     ),
-                    dcc.Graph(figure=pie_graph_arm)
+                    dcc.Graph(figure=line_graph_arm)
                 ]
             )
 
@@ -360,8 +360,8 @@ def display_page(checklist_options, data):
 
         if 'Bar Graph' in checklist_options:
 
-            paretic_arm = data.iloc[:, paretic_arm_idx]
-            non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
+            paretic_arm = data.iloc[:, paretic_arm_idx[1]]
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]
 
             # ASSUMPTION: vector length of all four limbs is the same
             num_bars = len(paretic_arm) + 1
