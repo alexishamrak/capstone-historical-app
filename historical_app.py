@@ -147,7 +147,7 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     use_ratio_calc = paretic_count / non_paretic_count
     paretic_limb_use = (paretic_count / len(paretic_count_mag)) * tot_time
     non_paretic_limb_use = (non_paretic_count / len(non_paretic_count_mag)) * tot_time
-    return use_ratio_calc, paretic_limb_use, non_paretic_limb_use
+    return use_ratio_calc, paretic_limb_use, non_paretic_limb_use, paretic_count, non_paretic_count
 
 
 ############################################### Callbacks ###############################################
@@ -187,6 +187,8 @@ def preprocessing(checklist):
     a_non_paretic_limb_use_final = []
     arm_use_ratio_final = []
     a_paretic_limb_use_final = []
+    paretic_count_final = []
+    non_paretic_count_final = []
 
     for i in range(len(last_index_array)):
         la_counts, la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
@@ -194,15 +196,24 @@ def preprocessing(checklist):
 
         tot_time_arm = np.ceil(la_time[last_index_array[i]] - la_time[first_index_array[i]])
 
+        # for calculations left arm is considered paretic
         # ASSUMPTION: left and right time is the same
-        arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
+        arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use, paretic_count, non_paretic_count = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
 
         a_non_paretic_limb_use_final.append(a_non_paretic_limb_use)
         arm_use_ratio_final.append(arm_use_ratio)
         a_paretic_limb_use_final.append(a_paretic_limb_use)
+        paretic_count_final.append(paretic_count)
+        non_paretic_count_final.append(non_paretic_count)
 
-    data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final]) 
-    df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U']).to_dict('records')
+    
+    print(f'count: {non_paretic_count_final}')
+    print(f'limb use: {a_non_paretic_limb_use_final}')
+    
+    data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
+    df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
+    
+    
     return df
 
 
@@ -227,10 +238,10 @@ def display_page(checklist_options, data):
         # use ratio falls between 0-0.5, the paretic limb falls under severe while the non-paretic limb is moderate
         thres = 0.5 # use ratio between 0-0.5 correlates to ARAT score of 0 or 1 (severe)
         trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
-        non_paretic_arm_idx, paretic_arm_idx = 0, 1 # paretic limb = left
+        non_paretic_arm_idx, paretic_arm_idx = [0,3], [1,4] # paretic limb = left
         if len(trouble_idx_U):
             if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
-                non_paretic_arm_idx, paretic_arm_idx = 1, 0
+                non_paretic_arm_idx, paretic_arm_idx = [1,4], [0,3]
             
         # populating visualizations based on checklist options
         # in the following order: Human Silhouette > Line Graph > Scatter Plot > Bar Graph > Box Plots
@@ -247,7 +258,7 @@ def display_page(checklist_options, data):
             # assign color to limbs based on severity of movement
             color_LA, color_RA = moderate, moderate
             if len(trouble_idx_U): # if any use ratio value falls between 0-0.5, paretic limb is categorized as severe
-                if 'RA' in data.columns[paretic_arm_idx]:
+                if 'RA' in data.columns[paretic_arm_idx[0]]:
                     color_RA = severe
                 else:
                     color_LA = severe 
@@ -280,9 +291,9 @@ def display_page(checklist_options, data):
             i += 1
         if 'Line Graph' in checklist_options:
 
-            paretic_arm = data.iloc[:, paretic_arm_idx]
+            paretic_arm = data.iloc[:, paretic_arm_idx[0]]
             paretic_arm = np.floor(np.array(paretic_arm))
-            non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]
             non_paretic_arm = np.floor(np.array(non_paretic_arm))
             diff = non_paretic_arm - paretic_arm
 
@@ -349,8 +360,8 @@ def display_page(checklist_options, data):
 
         if 'Bar Graph' in checklist_options:
 
-            paretic_arm = data.iloc[:, paretic_arm_idx]
-            non_paretic_arm = data.iloc[:, non_paretic_arm_idx]
+            paretic_arm = data.iloc[:, paretic_arm_idx[1]]
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]
 
             # ASSUMPTION: vector length of all four limbs is the same
             num_bars = len(paretic_arm) + 1
