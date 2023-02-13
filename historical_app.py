@@ -205,14 +205,9 @@ def preprocessing(checklist):
         a_paretic_limb_use_final.append(a_paretic_limb_use)
         paretic_count_final.append(paretic_count)
         non_paretic_count_final.append(non_paretic_count)
-
-    
-    print(f'count: {non_paretic_count_final}')
-    print(f'limb use: {a_non_paretic_limb_use_final}')
     
     data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
-    
     
     return df
 
@@ -306,8 +301,8 @@ def display_page(checklist_options, data):
             line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
             line_graph_arm.add_hline(y=40, line_dash="dash", line_color="red", annotation_text="Target")
             
-            line_graph_arm.update_xaxes(range=[1,x_range], minor_griddash="solid")
-            line_graph_arm.update_yaxes(range=[-20, 60], minor_griddash="solid")
+            line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
+            line_graph_arm.update_yaxes(range=[-20, 60])#, minor_griddash="solid")
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
             line_graph_arm.update_traces(marker_size=14)
 
