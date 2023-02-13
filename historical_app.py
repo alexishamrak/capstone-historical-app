@@ -79,6 +79,10 @@ sidebar = html.Div(
         html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
         html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
         html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
+        
+        # input field to set target for line graph
+        html.P('Hourly Limb Movement Target: ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
+        dbc.Input(id='hourly-target', placeholder='Target Time', type='text', value=20, style={'position': 'fixed', 'left': '1%', 'top': '93%', 'width': '18%'}),
     ],
     style=SIDEBAR_STYLE,
 )
@@ -218,9 +222,10 @@ def preprocessing(checklist):
           Output('graph3', 'children'),
           Output('graph4', 'children'),
           Input('checklist', 'value'),
-          Input('filter-data', 'data')
+          Input('filter-data', 'data'),
+          Input('hourly-target', 'value'),
 )
-def display_page(checklist_options, data):
+def display_page(checklist_options, data, hourly_target):
     if data is not None:
         # initialize variables needed
         i = 0
@@ -299,7 +304,7 @@ def display_page(checklist_options, data):
             line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
-            line_graph_arm.add_hline(y=40, line_dash="dash", line_color="red", annotation_text="Target")
+            line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
             line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
             line_graph_arm.update_yaxes(range=[-20, 60])#, minor_griddash="solid")
