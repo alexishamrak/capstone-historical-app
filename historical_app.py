@@ -317,7 +317,8 @@ def display_page(checklist_options, data, hourly_target):
             line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
             line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
-            line_graph_arm.update_yaxes(range=[min_range, max_range])#, minor_griddash="solid")
+            buffer = (max_range - min_range) * 0.2
+            line_graph_arm.update_yaxes(range=[min_range-buffer, max_range+buffer])#, minor_griddash="solid")
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
             line_graph_arm.update_traces(marker_size=14)
 
