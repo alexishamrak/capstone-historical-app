@@ -297,6 +297,16 @@ def display_page(checklist_options, data, hourly_target):
             non_paretic_arm = np.floor(np.array(non_paretic_arm))
             diff = non_paretic_arm - paretic_arm
 
+            min_range = []
+            for arr in [paretic_arm, non_paretic_arm, diff]:
+                min_range.append(np.min(arr))
+            min_range = np.min(min_range)
+
+            max_range = []
+            for arr in [paretic_arm, non_paretic_arm, diff]:
+                max_range.append(np.max(arr))
+            max_range = np.max(max_range)
+
             hours = [1, 2, 3, 4, 5, 6]
             x_range = len(hours)
 
@@ -307,13 +317,13 @@ def display_page(checklist_options, data, hourly_target):
             line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
             line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
-            line_graph_arm.update_yaxes(range=[-20, 60])#, minor_griddash="solid")
+            line_graph_arm.update_yaxes(range=[min_range, max_range])#, minor_griddash="solid")
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
             line_graph_arm.update_traces(marker_size=14)
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 40 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Limb Use", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
                         "This line graph helps visualize the amount of movement seen by the paretic and "
                         "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
