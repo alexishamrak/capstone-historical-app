@@ -197,7 +197,7 @@ def preprocessing(checklist):
         a_paretic_limb_use_final.append(a_paretic_limb_use)
         paretic_count_final.append(paretic_count)
         non_paretic_count_final.append(non_paretic_count)
-    
+
     data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
     
@@ -295,7 +295,9 @@ def display_page(checklist_options, data, hourly_target):
                 max_range.append(np.max(arr))
             max_range = np.max(max_range)
 
-            hours = [1, 2, 3, 4, 5, 6] # TODO: Automate this
+            # data.shape[0] retrieves the number of rows in the dataset
+            # the number of rows in the dataset corresponds to the number of intervals (hours)
+            hours = list(range(1, data.shape[0]+1))
             x_range = len(hours)
 
             line_graph_arm = go.Figure()
