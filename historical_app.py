@@ -130,19 +130,10 @@ def collecting_counts(raw_data, freq, epoch):
     # get_counts() is calculating the activity count from the accelerometer data
     # epoch is "grouping" the data into 10 second intervals
     # maybe we should try epoch=1 later
-    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch)
+    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch) # TODO: Adjust 'freq' when actual data is received
     raw_counts = pd.DataFrame(raw_counts, columns=["Axis1", "Axis2", "Axis3"])
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
     return raw_counts, raw_count_mag
-
-
-# function for filtering raw data
-def filter_data(x_data, y_data, z_data):
-    # maybe we'll need to play around with the "51", "3" values
-    x_hat = scipy.signal.savgol_filter(x_data, 51, 3)
-    y_hat = scipy.signal.savgol_filter(y_data, 51, 3)
-    z_hat = scipy.signal.savgol_filter(z_data, 51, 3)
-    return x_hat, y_hat, z_hat
 
 
 def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
@@ -184,9 +175,6 @@ def preprocessing(checklist):
         first_index_array.append(val + 1)
 
     last_index_array.append(len(la_time) - 1)
-
-    la_x_hat, la_y_hat, la_z_hat = filter_data(la_x, la_y, la_z)
-    ra_x_hat, ra_y_hat, ra_z_hat = filter_data(ra_x, ra_y, ra_z)
 
     a_non_paretic_limb_use_final = []
     arm_use_ratio_final = []
@@ -307,7 +295,7 @@ def display_page(checklist_options, data, hourly_target):
                 max_range.append(np.max(arr))
             max_range = np.max(max_range)
 
-            hours = [1, 2, 3, 4, 5, 6]
+            hours = [1, 2, 3, 4, 5, 6] # TODO: Automate this
             x_range = len(hours)
 
             line_graph_arm = go.Figure()
@@ -324,7 +312,7 @@ def display_page(checklist_options, data, hourly_target):
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Limb Use", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Limb Movement", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
                         "This line graph helps visualize the amount of movement seen by the paretic and "
                         "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
