@@ -79,6 +79,10 @@ sidebar = html.Div(
         html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
         html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
         html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
+        
+        # input field to set target for line graph
+        html.P('Hourly Limb Movement Target: ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
+        dbc.Input(id='hourly-target', placeholder='Target Time', type='text', value=20, style={'position': 'fixed', 'left': '1%', 'top': '93%', 'width': '18%'}),
     ],
     style=SIDEBAR_STYLE,
 )
@@ -126,19 +130,10 @@ def collecting_counts(raw_data, freq, epoch):
     # get_counts() is calculating the activity count from the accelerometer data
     # epoch is "grouping" the data into 10 second intervals
     # maybe we should try epoch=1 later
-    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch)
+    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch) # TODO: Adjust 'freq' when actual data is received
     raw_counts = pd.DataFrame(raw_counts, columns=["Axis1", "Axis2", "Axis3"])
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
     return raw_counts, raw_count_mag
-
-
-# function for filtering raw data
-def filter_data(x_data, y_data, z_data):
-    # maybe we'll need to play around with the "51", "3" values
-    x_hat = scipy.signal.savgol_filter(x_data, 51, 3)
-    y_hat = scipy.signal.savgol_filter(y_data, 51, 3)
-    z_hat = scipy.signal.savgol_filter(z_data, 51, 3)
-    return x_hat, y_hat, z_hat
 
 
 def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
@@ -181,9 +176,6 @@ def preprocessing(checklist):
 
     last_index_array.append(len(la_time) - 1)
 
-    la_x_hat, la_y_hat, la_z_hat = filter_data(la_x, la_y, la_z)
-    ra_x_hat, ra_y_hat, ra_z_hat = filter_data(ra_x, ra_y, ra_z)
-
     a_non_paretic_limb_use_final = []
     arm_use_ratio_final = []
     a_paretic_limb_use_final = []
@@ -206,13 +198,8 @@ def preprocessing(checklist):
         paretic_count_final.append(paretic_count)
         non_paretic_count_final.append(non_paretic_count)
 
-    
-    print(f'count: {non_paretic_count_final}')
-    print(f'limb use: {a_non_paretic_limb_use_final}')
-    
     data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
-    
     
     return df
 
@@ -223,9 +210,10 @@ def preprocessing(checklist):
           Output('graph3', 'children'),
           Output('graph4', 'children'),
           Input('checklist', 'value'),
-          Input('filter-data', 'data')
+          Input('filter-data', 'data'),
+          Input('hourly-target', 'value'),
 )
-def display_page(checklist_options, data):
+def display_page(checklist_options, data, hourly_target):
     if data is not None:
         # initialize variables needed
         i = 0
@@ -297,23 +285,36 @@ def display_page(checklist_options, data):
             non_paretic_arm = np.floor(np.array(non_paretic_arm))
             diff = non_paretic_arm - paretic_arm
 
-            hours = [1, 2, 3, 4, 5, 6]
+            min_range = []
+            for arr in [paretic_arm, non_paretic_arm, diff]:
+                min_range.append(np.min(arr))
+            min_range = np.min(min_range)
+
+            max_range = []
+            for arr in [paretic_arm, non_paretic_arm, diff]:
+                max_range.append(np.max(arr))
+            max_range = np.max(max_range)
+
+            # data.shape[0] retrieves the number of rows in the dataset
+            # the number of rows in the dataset corresponds to the number of intervals (hours)
+            hours = list(range(1, data.shape[0]+1))
             x_range = len(hours)
 
             line_graph_arm = go.Figure()
             line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
-            line_graph_arm.add_hline(y=40, line_dash="dash", line_color="red", annotation_text="Target")
+            line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
-            line_graph_arm.update_xaxes(range=[1,x_range], minor_griddash="solid")
-            line_graph_arm.update_yaxes(range=[-20, 60], minor_griddash="solid")
+            line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
+            buffer = (max_range - min_range) * 0.2
+            line_graph_arm.update_yaxes(range=[min_range-buffer, max_range+buffer])#, minor_griddash="solid")
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
             line_graph_arm.update_traces(marker_size=14)
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Paretic Arm Use (Target = 40 minutes)", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Limb Movement", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
                         "This line graph helps visualize the amount of movement seen by the paretic and "
                         "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
