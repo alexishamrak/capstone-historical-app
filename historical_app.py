@@ -81,8 +81,8 @@ sidebar = html.Div(
         html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
         
         # input field to set target for line graph
-        html.P('Hourly Limb Movement Target: ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
-        dbc.Input(id='hourly-target', placeholder='Target Time', type='text', value=20, style={'position': 'fixed', 'left': '1%', 'top': '93%', 'width': '18%'}),
+        html.P('Limb Movement Target (Minutes): ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
+        dbc.Input(id='limb-movement-target', placeholder='Target Time', type='text', value=60, style={'position': 'fixed', 'left': '1%', 'top': '93%', 'width': '18%'}),
     ],
     style=SIDEBAR_STYLE,
 )
@@ -113,24 +113,23 @@ app.layout = html.Div([header, sidebar, content])
 def sorting_data(dataset):
     time = dataset["time"]
     time = np.array(time)
-    x = dataset["x-acceleration"]
+    x = dataset["Accelerometer X"]
     x = np.array(x)
-    y = dataset["y-acceleration"]
+    y = dataset["Accelerometer Y"]
     y = np.array(y)
-    z = dataset["z-acceleration"]
+    z = dataset["Accelerometer Z"]
     z = np.array(z)
-    raw = dataset[["x-acceleration", "y-acceleration", "z-acceleration"]]
+    raw = dataset[["Accelerometer X", "Accelerometer Y", "Accelerometer Z"]]
     raw = np.array(raw)
     return time, x, y, z, raw
 
 
 # function for calculating the number of activity counts
 def collecting_counts(raw_data, freq, epoch):
-    # frequency is the sampling rate (50 Hz), epochs was arbitrarily set to 10
+    # frequency is the sampling rate (30 Hz), epochs is set to 10
     # get_counts() is calculating the activity count from the accelerometer data
     # epoch is "grouping" the data into 10 second intervals
-    # maybe we should try epoch=1 later
-    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch) # TODO: Adjust 'freq' when actual data is received
+    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch)
     raw_counts = pd.DataFrame(raw_counts, columns=["Axis1", "Axis2", "Axis3"])
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
     return raw_counts, raw_count_mag
@@ -152,20 +151,25 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
           Input('checklist', 'value'),
 )
 def preprocessing(checklist):
-    left_arm = pd.read_csv('assets/left_hand_lm.csv')
-    right_arm = pd.read_csv('assets/right_hand_hm.csv')
+    # load in dataset - 30 Hz raw accelerometer data (m/s2) - 24 hours worth of data total
+    left_arm = pd.read_csv('assets/570_week2_LUE.csv', header=10)
+    right_arm = pd.read_csv('assets/570_week2_RUE.csv', header=10) 
 
-    freq = 50
-    epoch = 1
+    # add time stamp (time in seconds)
+    left_arm['time'] = np.arange(0, 86400, 1/30) # 86400 seconds = 24 hours
+    right_arm['time'] = np.arange(0, 86400, 1/30)
+
+    freq = 30
+    epoch = 10
 
     la_time, la_x, la_y, la_z, la_raw = sorting_data(left_arm)
     ra_time, ra_x, ra_y, ra_z, ra_raw = sorting_data(right_arm)
 
-    # creating arrays to store the start and end indices of time segments
-    time_interval = 60  # should be changed to 3600s
+    # creating arrays to store the start and end indices of each 4 hour time segment
+    time_interval = 14400 # (14400s = 4 hours) - each data point should show the aggregated data for 4 hours
     last_index_array = []
     first_index_array = [0]
-    final_time = np.max(la_time) # ASSUMPTION: lh_time and rh_time are the same (raspberry pi can ensure this)
+    final_time = np.max(la_time) # ASSUMPTION: la_time and ra_time are the same (raspberry pi can ensure this)
     iteration = int(np.floor(final_time/time_interval))
     data_spacing = np.max(np.where(la_time[la_time < time_interval]))
 
@@ -211,7 +215,7 @@ def preprocessing(checklist):
           Output('graph4', 'children'),
           Input('checklist', 'value'),
           Input('filter-data', 'data'),
-          Input('hourly-target', 'value'),
+          Input('limb-movement-target', 'value'),
 )
 def display_page(checklist_options, data, hourly_target):
     if data is not None:
@@ -228,7 +232,7 @@ def display_page(checklist_options, data, hourly_target):
         trouble_idx_U = data['Use Ratio U'][data['Use Ratio U'] < thres].index
         non_paretic_arm_idx, paretic_arm_idx = [0,3], [1,4] # paretic limb = left
         if len(trouble_idx_U):
-            if data['Limb Use LH'][trouble_idx_U[0]] > data['Limb Use RH'][trouble_idx_U[0]]: # paretic limb = right
+            if data['Limb Use LA'][trouble_idx_U[0]] > data['Limb Use RA'][trouble_idx_U[0]]: # paretic limb = right
                 non_paretic_arm_idx, paretic_arm_idx = [1,4], [0,3]
             
         # populating visualizations based on checklist options
@@ -280,36 +284,22 @@ def display_page(checklist_options, data, hourly_target):
         if 'Line Graph' in checklist_options:
 
             paretic_arm = data.iloc[:, paretic_arm_idx[0]]
-            paretic_arm = np.floor(np.array(paretic_arm))
+            paretic_arm = np.floor(np.array(paretic_arm/60)) 
             non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]
-            non_paretic_arm = np.floor(np.array(non_paretic_arm))
+            non_paretic_arm = np.floor(np.array(non_paretic_arm/60)) 
             diff = non_paretic_arm - paretic_arm
 
-            min_range = []
-            for arr in [paretic_arm, non_paretic_arm, diff]:
-                min_range.append(np.min(arr))
-            min_range = np.min(min_range)
-
-            max_range = []
-            for arr in [paretic_arm, non_paretic_arm, diff]:
-                max_range.append(np.max(arr))
-            max_range = np.max(max_range)
-
             # data.shape[0] retrieves the number of rows in the dataset
-            # the number of rows in the dataset corresponds to the number of intervals (hours)
             hours = list(range(1, data.shape[0]+1))
-            x_range = len(hours)
-
+            
             line_graph_arm = go.Figure()
             line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
             line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
-            line_graph_arm.update_xaxes(range=[1,x_range])#, minor_griddash="solid")
-            buffer = (max_range - min_range) * 0.2
-            line_graph_arm.update_yaxes(range=[min_range-buffer, max_range+buffer])#, minor_griddash="solid")
-            line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement per Hour')
+            line_graph_arm.update_xaxes(tickvals=hours, ticktext=['4', '8', '12', '16', '20', '24'])
+            line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement for Every 4 Hours')
             line_graph_arm.update_traces(marker_size=14)
 
             graphs[i] = html.Div(
@@ -342,6 +332,7 @@ def display_page(checklist_options, data, hourly_target):
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
             scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
+            scatter_plot_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
 
             graphs[i] = html.Div(
                 [
@@ -371,6 +362,7 @@ def display_page(checklist_options, data, hourly_target):
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
 
+            bar_graph_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
             bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
 
             graphs[i] = html.Div(
