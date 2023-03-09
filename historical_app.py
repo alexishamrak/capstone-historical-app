@@ -6,6 +6,7 @@ import dash_bootstrap_components as dbc
 from agcounts.extract import get_counts
 import plotly.express as px
 from PIL import Image
+from PIL import Image, ImageDraw, ImageFont    
 import plotly.graph_objects as go
 
 # initialize application
@@ -250,6 +251,11 @@ def display_page(checklist_options, data, hourly_target):
                         im.putpixel( (x,y), color_LA) 
                     if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
                         im.putpixel( (x,y), color_RA) 
+            
+            draw = ImageDraw.Draw(im)
+            font = ImageFont.truetype("arial.ttf", 40, encoding="unic")
+            draw.text((10, 550), u"Left", fill='#000000', font=font)
+            draw.text((671, 550), u"Right", fill='#000000', font=font)
             
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
