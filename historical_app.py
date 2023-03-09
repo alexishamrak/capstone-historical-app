@@ -72,13 +72,12 @@ sidebar = html.Div(
         html.Li('Acetylsalicyclic Acid, Aspirin', style={'position': 'fixed', 'left': '3%', 'top': '32%'}),
         html.Li('Benazepril (Lotensin)', style={'position': 'fixed', 'left': '3%', 'top': '35%'}),
         html.P('Stroke Information:', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '2%', 'top': '39%'}),
-        html.Li('ARAT Score: 18 (Right Arm)', style={'position': 'fixed', 'left': '3%', 'top': '42%'}),
-        html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
-        html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
-        html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '51%'}),
+        html.Li('ARAT Score: 53 (Left Arm)', style={'position': 'fixed', 'left': '3%', 'top': '42%'}),
+        html.Li('NIHSS Score: 12', style={'position': 'fixed', 'left': '3%', 'top': '45%'}),
+        html.Li('Previous stroke in 2019', style={'position': 'fixed', 'left': '3%', 'top': '48%'}),
         
         # input field to set target for line graph
-        html.P('Limb Movement Target (Minutes): ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
+        html.P('Target Arm Movement (Minutes): ', style={'fontWeight': 'bold', 'position': 'fixed', 'left': '1%', 'top': '89%'}),
         dbc.Input(id='limb-movement-target', placeholder='Target Time', type='text', value=60, style={'position': 'fixed', 'left': '1%', 'top': '93%', 'width': '18%'}),
     ],
     style=SIDEBAR_STYLE,
@@ -257,7 +256,7 @@ def display_page(checklist_options, data, hourly_target):
             fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Severity of Limb Impairment", id="tooltip1", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Severity of Arm Impairment", id="tooltip1", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
                         "Taking advantage of the positive correlation between the use ratio and ARAT scores, " 
                         "a use ratio of 0.5 is used as the threshold to indicate severity of the limb impairment. "
@@ -292,7 +291,7 @@ def display_page(checklist_options, data, hourly_target):
 
             graphs[i] = html.Div(
                 [
-                    html.H4([html.Span("Hourly Limb Movement", id="tooltip2", style={'paddingLeft': '3%'}),]),
+                    html.H4([html.Span("Hourly Arm Movement", id="tooltip2", style={'paddingLeft': '3%'}),]),
                     dbc.Tooltip(
                         "This line graph helps visualize the amount of movement seen by the paretic and "
                         "non-paretic limbs, which are the blue and magenta lines, respectively. The green "
@@ -310,12 +309,12 @@ def display_page(checklist_options, data, hourly_target):
 
         if 'Scatter Plot' in checklist_options:
 
-            scatter_plot_arm = px.scatter(x=np.arange(1, 7) , y=data['Use Ratio U'])
+            scatter_plot_arm = px.scatter(x=np.arange(1, 7), y=data['Use Ratio U'])
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
             scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
-            scatter_plot_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
+            scatter_plot_arm.update_xaxes(tickvals=np.arange(1, 7), ticktext=['4', '8', '12', '16', '20', '24'])
 
             graphs[i] = html.Div(
                 [
