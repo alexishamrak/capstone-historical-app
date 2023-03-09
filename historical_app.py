@@ -1,11 +1,8 @@
 import numpy as np
 import pandas as pd
-import dash
-from dash import Dash, dcc, html, callback, Input, Output, State
+from dash import Dash, dcc, html, callback, Input, Output
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-from plotly.subplots import make_subplots
-import scipy.signal
 from agcounts.extract import get_counts
 import plotly.express as px
 from PIL import Image
@@ -113,26 +110,20 @@ app.layout = html.Div([header, sidebar, content])
 def sorting_data(dataset):
     time = dataset["time"]
     time = np.array(time)
-    x = dataset["Accelerometer X"]
-    x = np.array(x)
-    y = dataset["Accelerometer Y"]
-    y = np.array(y)
-    z = dataset["Accelerometer Z"]
-    z = np.array(z)
     raw = dataset[["Accelerometer X", "Accelerometer Y", "Accelerometer Z"]]
     raw = np.array(raw)
-    return time, x, y, z, raw
+    return time, raw
 
 
 # function for calculating the number of activity counts
-def collecting_counts(raw_data, freq, epoch):
+def collecting_counts(raw_data):
     # frequency is the sampling rate (30 Hz), epochs is set to 10
     # get_counts() is calculating the activity count from the accelerometer data
     # epoch is "grouping" the data into 10 second intervals
-    raw_counts = get_counts(raw_data, freq=freq, epoch=epoch)
+    raw_counts = get_counts(raw_data, freq=30, epoch=10)
     raw_counts = pd.DataFrame(raw_counts, columns=["Axis1", "Axis2", "Axis3"])
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
-    return raw_counts, raw_count_mag
+    return raw_count_mag
 
 
 def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
@@ -159,11 +150,8 @@ def preprocessing(checklist):
     left_arm['time'] = np.arange(0, 86400, 1/30) # 86400 seconds = 24 hours
     right_arm['time'] = np.arange(0, 86400, 1/30)
 
-    freq = 30
-    epoch = 10
-
-    la_time, la_x, la_y, la_z, la_raw = sorting_data(left_arm)
-    ra_time, ra_x, ra_y, ra_z, ra_raw = sorting_data(right_arm)
+    la_time, la_raw = sorting_data(left_arm)
+    ra_time, ra_raw = sorting_data(right_arm)
 
     # creating arrays to store the start and end indices of each 4 hour time segment
     time_interval = 14400 # (14400s = 4 hours) - each data point should show the aggregated data for 4 hours
@@ -187,8 +175,8 @@ def preprocessing(checklist):
     non_paretic_count_final = []
 
     for i in range(len(last_index_array)):
-        la_counts, la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
-        ra_counts, ra_count_mag = collecting_counts(ra_raw[first_index_array[i]:last_index_array[i]], freq, epoch)
+        la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]])
+        ra_count_mag = collecting_counts(ra_raw[first_index_array[i]:last_index_array[i]])
 
         tot_time_arm = np.ceil(la_time[last_index_array[i]] - la_time[first_index_array[i]])
 
@@ -321,13 +309,8 @@ def display_page(checklist_options, data, hourly_target):
             i += 1
 
         if 'Scatter Plot' in checklist_options:
-            
-            use_ratio_arm = data['Use Ratio U']
 
-            num_dots = len(use_ratio_arm) + 1
-            ind = np.arange(1, num_dots) 
-
-            scatter_plot_arm = px.scatter(x=ind, y=use_ratio_arm)
+            scatter_plot_arm = px.scatter(x=np.arange(1, 7) , y=data['Use Ratio U'])
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
@@ -354,10 +337,7 @@ def display_page(checklist_options, data, hourly_target):
 
             paretic_arm = data.iloc[:, paretic_arm_idx[1]]
             non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]
-
-            # ASSUMPTION: vector length of all four limbs is the same
-            num_bars = len(paretic_arm) + 1
-            ind = np.arange(1, num_bars)
+            ind = np.arange(1, len(paretic_arm) + 1)
 
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
