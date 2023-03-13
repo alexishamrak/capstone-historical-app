@@ -41,6 +41,36 @@ CONTENT_STYLE = {
     "backgroundColor": "white"
 }
 
+# setting the style of tabs for choosing between day 1, day 2, and day 3 data
+tabs_styles = {'zIndex': 99, 'display': 'inlineBlock', 'height': '4vh', 'width': '12vw',
+               'position': 'fixed', "background": "#246700", 'top': '1%', 'left': '21%',
+               'border': 'white', 'border-radius': '4px'}
+
+tab_style = {
+    "background": "#246700",
+    'text-transform': 'uppercase',
+    'color': 'white',
+    'border': 'white',
+    'font-size': '14px',
+    'font-weight': 600,
+    'align-items': 'center',
+    'justify-content': 'center',
+    'border-radius': '4px',
+    'padding':'6px'
+}
+
+tab_selected_style = {
+    "background": "white",
+    'text-transform': 'uppercase',
+    'color': '#246700',
+    'font-size': '14px',
+    'font-weight': 600,
+    'align-items': 'center',
+    'justify-content': 'center',
+    'border-radius': '4px',
+    'padding':'6px'
+}
+
 # add components and styling to the different sections of the application
 header = html.Div(
     [
@@ -84,7 +114,16 @@ sidebar = html.Div(
     style=SIDEBAR_STYLE,
 )
 
-content = html.Div(
+# creating a content section with tabs to display three days worth of data and the four different visualizations
+# the tas are broken down into day 1, day 2, and day 3
+# the visualizations are each given their own cards for displaying the graphs
+content = html.Div([
+    dcc.Tabs(id='tabs', value='day-1', children=[
+        dcc.Tab(label='Day 1', value='day-1', style=tab_style, selected_style=tab_selected_style),
+        dcc.Tab(label='Day 2', value='day-2', style=tab_style, selected_style=tab_selected_style),
+        dcc.Tab(label='Day 3', value='day-3', style=tab_style, selected_style=tab_selected_style),
+    ], style=tabs_styles),
+    html.Div(
     [
         # place each visualization inside a card (for neatness)
         dbc.Card(id='card1', children=dbc.CardBody(html.Div(id='graph1'))),
@@ -99,6 +138,8 @@ content = html.Div(
     ],
     style=CONTENT_STYLE
 )
+])
+
 
 app.layout = html.Div([header, sidebar, content])
 
@@ -125,7 +166,7 @@ def collecting_counts(raw_data):
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
     return raw_count_mag
 
-
+# function for calculating the use of limbs (in time), the use ratio between limbs, and the activity counts from limbs
 def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
     paretic_count = sum(i >= 2 for i in paretic_count_mag)
     non_paretic_count = sum(i >= 2 for i in non_paretic_count_mag)
@@ -139,17 +180,29 @@ def use_ratio(paretic_count_mag, non_paretic_count_mag, tot_time):
 
 # preprocess data
 @callback(Output('filter-data', 'data'),
-          Input('checklist', 'value'),
+          Input('checklist', 'value'), 
+          Input('tabs', 'value'), 
 )
-def preprocessing(checklist):
+def preprocessing(checklist, tabs):
+
     # load in dataset - 30 Hz raw accelerometer data (m/s2) - 24 hours worth of data total
-    left_arm = pd.read_csv('assets/570_week2_LUE.csv', header=10)
-    right_arm = pd.read_csv('assets/570_week2_RUE.csv', header=10) 
+    # based on the tab selected a different dataset will be selected
+    # we are using this data because it has been collected from real stroke patients so it will help demonstrate expected trends
+    if tabs == 'day-1':
+        left_arm = pd.read_csv('assets/570_week2_LUE.csv', header=10)
+        right_arm = pd.read_csv('assets/570_week2_RUE.csv', header=10)
+    elif tabs == 'day-2':
+        left_arm = pd.read_csv('assets/570_week4_LUE.csv', header=10)
+        right_arm = pd.read_csv('assets/570_week4_RUE.csv', header=10)
+    elif tabs == 'day-3':
+        left_arm = pd.read_csv('assets/569_week4_LUE.csv', header=10)
+        right_arm = pd.read_csv('assets/569_week4_RUE.csv', header=10)
 
     # add time stamp (time in seconds)
     left_arm['time'] = np.arange(0, 86400, 1/30) # 86400 seconds = 24 hours
     right_arm['time'] = np.arange(0, 86400, 1/30)
 
+    # saving dataset that has is input to use for data processing
     la_time, la_raw = sorting_data(left_arm)
     ra_time, ra_raw = sorting_data(right_arm)
 
@@ -161,35 +214,45 @@ def preprocessing(checklist):
     iteration = int(np.floor(final_time/time_interval))
     data_spacing = np.max(np.where(la_time[la_time < time_interval]))
 
+    # splitting the data into sections - we have chosen four hours
+    # four hours worth of data will be processed and displayed as one point on a graph
+    # this will be done six times because we are working with 24 hours of data (24 hours/4 hours = 6)
     for i in range(iteration):
         val = data_spacing * (i + 1)
         last_index_array.append(val)
         first_index_array.append(val + 1)
 
+    # appending last timestamo from sectioned data for processing
     last_index_array.append(len(la_time) - 1)
 
+    # creating empty lists to populate with calculated values
     a_non_paretic_limb_use_final = []
     arm_use_ratio_final = []
     a_paretic_limb_use_final = []
     paretic_count_final = []
     non_paretic_count_final = []
 
+    # calculating the activity counts, limb use times, and use ratios
     for i in range(len(last_index_array)):
+        # calling collecting_counts to calculate activity counts based on preset threshold
         la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]])
         ra_count_mag = collecting_counts(ra_raw[first_index_array[i]:last_index_array[i]])
 
+        # calculating the total time each limb was in use
         tot_time_arm = np.ceil(la_time[last_index_array[i]] - la_time[first_index_array[i]])
 
         # for calculations left arm is considered paretic
         # ASSUMPTION: left and right time is the same
         arm_use_ratio, a_paretic_limb_use, a_non_paretic_limb_use, paretic_count, non_paretic_count = use_ratio(la_count_mag, ra_count_mag, tot_time_arm)
 
+        # appending calculations from segmented data
         a_non_paretic_limb_use_final.append(a_non_paretic_limb_use)
         arm_use_ratio_final.append(arm_use_ratio)
         a_paretic_limb_use_final.append(a_paretic_limb_use)
         paretic_count_final.append(paretic_count)
         non_paretic_count_final.append(non_paretic_count)
 
+    # packaging data into a dataframe for displaying data in the visualizations
     data = np.transpose([a_non_paretic_limb_use_final, a_paretic_limb_use_final, arm_use_ratio_final, non_paretic_count_final, paretic_count_final]) 
     df = pd.DataFrame(data, columns=['Limb Use RA', 'Limb Use LA', 'Use Ratio U', 'RA Activity Count', 'LA Activity Count']).to_dict('records')
     
@@ -275,26 +338,30 @@ def display_page(checklist_options, data, hourly_target):
             )
             i += 1
         if 'Line Graph' in checklist_options:
-
-            paretic_arm = data.iloc[:, paretic_arm_idx[0]]
-            paretic_arm = np.floor(np.array(paretic_arm/60)) 
-            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]
-            non_paretic_arm = np.floor(np.array(non_paretic_arm/60)) 
-            diff = non_paretic_arm - paretic_arm
+            
+            # the line graph displays the hourly arm movement for each limb which has been calculated based on activity counts over time
+            paretic_arm = data.iloc[:, paretic_arm_idx[0]]              # locating which limb is paretic
+            paretic_arm = np.floor(np.array(paretic_arm/60))            # rounding down to the nearest minute of paretic limb  time 
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]      # locating which limb is non-paretic
+            non_paretic_arm = np.floor(np.array(non_paretic_arm/60))    # rounding down to the nearest minute of non-paretic limb time
+            diff = non_paretic_arm - paretic_arm                        # calculating difference in time between paretic and nonparetic limb
 
             # data.shape[0] retrieves the number of rows in the dataset
             hours = list(range(1, data.shape[0]+1))
             
+            # creating the line graph which will have 4 different lines
+            # there is a line for paretic movement, non-paretic movement, difference between limbs, and a threshold (expected movement time)
             line_graph_arm = go.Figure()
             line_graph_arm.add_trace(go.Scatter(x=hours, y=paretic_arm, mode='lines+markers', name='Paretic Arm Movement', line=dict(width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=non_paretic_arm, mode='lines+markers', name='Non-Paretic Arm Movement', line=dict(color='rgb(231,107,243)', width=4)))
             line_graph_arm.add_trace(go.Scatter(x=hours, y=diff, mode='lines+markers', name='Difference between Arms', line=dict(width=4)))
             line_graph_arm.add_hline(y=int(hourly_target), line_dash="dash", line_color="red", annotation_text="Target")
             
+            # adding x-axis tick values, axis labels, and increasing marker size
             line_graph_arm.update_xaxes(tickvals=hours, ticktext=['4', '8', '12', '16', '20', '24'])
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement for Every 4 Hours')
             line_graph_arm.update_traces(marker_size=14)
-
+            # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
                     html.H4([html.Span("Hourly Arm Movement", id="tooltip2", style={'paddingLeft': '3%'}),]),
@@ -315,13 +382,16 @@ def display_page(checklist_options, data, hourly_target):
 
         if 'Scatter Plot' in checklist_options:
 
+            # this scatter plot displays the use ratio between limbs over time in comparison to a lower/upper threshold
+            # blue dots represent the use ratio calculated over four hours, two red dashed lines represent an upper and lower threshold
+            # of where the use ratio is expected to be
             scatter_plot_arm = px.scatter(x=np.arange(1, 7), y=data['Use Ratio U'])
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
             scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
             scatter_plot_arm.update_xaxes(tickvals=np.arange(1, 7), ticktext=['4', '8', '12', '16', '20', '24'])
-
+            # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
                     html.H4([html.Span("Use Ratio of Arms Relative to Typical Range", id="tooltip3", style={'paddingLeft': '3%'}),]),
@@ -340,16 +410,18 @@ def display_page(checklist_options, data, hourly_target):
 
         if 'Bar Graph' in checklist_options:
 
-            paretic_arm = data.iloc[:, paretic_arm_idx[1]]
-            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]
-            ind = np.arange(1, len(paretic_arm) + 1)
+            # this graph will display the activity count between limbs as a bar graph
+            paretic_arm = data.iloc[:, paretic_arm_idx[1]]          # locating which limb is paretic
+            non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]  # locating which limb is non-paretic
+            ind = np.arange(1, len(paretic_arm) + 1)                # calculating how many bars will be needed        
 
+            # adding both paretic and non-paretic data to bar graph
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
-
+            # updating graph to have x-axis ticks and axis labels
             bar_graph_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
             bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
-
+            # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
                     html.H4([html.Span("Activity Count of Paretic and Non-Paretic Arms", id="tooltip4", style={'paddingLeft': '3%'}),]),
