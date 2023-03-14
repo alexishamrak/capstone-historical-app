@@ -71,7 +71,7 @@ tab_selected_style = {
     'padding':'6px'
 }
 
-# add components and styling to the different sections of the application
+# add components and styling to the header of the application
 header = html.Div(
     [
         # display application name on top left-hand corner
@@ -90,6 +90,7 @@ header = html.Div(
     style=HEADER_STYLE
 )
 
+# add components and styling to the application sidebar
 sidebar = html.Div(
     [
         # display patient information
@@ -115,7 +116,7 @@ sidebar = html.Div(
 )
 
 # creating a content section with tabs to display three days worth of data and the four different visualizations
-# the tas are broken down into day 1, day 2, and day 3
+# the tabs are broken down into day 1, day 2, and day 3
 # the visualizations are each given their own cards for displaying the graphs
 content = html.Div([
     dcc.Tabs(id='tabs', value='day-1', children=[
@@ -136,8 +137,7 @@ content = html.Div([
         dcc.Store(id='filter-data', storage_type='session'),
         dcc.Store(id='bilateral-mag', storage_type='session')
     ],
-    style=CONTENT_STYLE
-)
+    style=CONTENT_STYLE)
 ])
 
 
@@ -147,7 +147,7 @@ app.layout = html.Div([header, sidebar, content])
 #################################### functions ###############################################################
 
 
-# function for sorting data into separate arrays for time, X, Y, and Z data
+# function for sorting data into separate arrays for time, X-, Y-, and Z-data
 def sorting_data(dataset):
     time = dataset["time"]
     time = np.array(time)
@@ -163,6 +163,7 @@ def collecting_counts(raw_data):
     # epoch is "grouping" the data into 10 second intervals
     raw_counts = get_counts(raw_data, freq=30, epoch=10)
     raw_counts = pd.DataFrame(raw_counts, columns=["Axis1", "Axis2", "Axis3"])
+    # compute vector magnitude of activity counts
     raw_count_mag = np.sqrt(raw_counts["Axis1"] ** 2 + raw_counts["Axis2"] ** 2 + raw_counts["Axis3"] ** 2)
     return raw_count_mag
 
@@ -187,7 +188,8 @@ def preprocessing(checklist, tabs):
 
     # load in dataset - 30 Hz raw accelerometer data (m/s2) - 24 hours worth of data total
     # based on the tab selected a different dataset will be selected
-    # we are using this data because it has been collected from real stroke patients so it will help demonstrate expected trends
+    # we are using this data because it has been collected from real stroke patients so it 
+    # will help demonstrate expected trends
     if tabs == 'day-1':
         left_arm = pd.read_csv('assets/570_week2_LUE.csv', header=10)
         right_arm = pd.read_csv('assets/570_week2_RUE.csv', header=10)
@@ -202,11 +204,11 @@ def preprocessing(checklist, tabs):
     left_arm['time'] = np.arange(0, 86400, 1/30) # 86400 seconds = 24 hours
     right_arm['time'] = np.arange(0, 86400, 1/30)
 
-    # saving dataset that has is input to use for data processing
+    # saving dataset that is input to use for data processing
     la_time, la_raw = sorting_data(left_arm)
     ra_time, ra_raw = sorting_data(right_arm)
 
-    # creating arrays to store the start and end indices of each 4 hour time segment
+    # creating arrays to store the start and end indices of each 4-hour time segment
     time_interval = 14400 # (14400s = 4 hours) - each data point should show the aggregated data for 4 hours
     last_index_array = []
     first_index_array = [0]
@@ -222,7 +224,7 @@ def preprocessing(checklist, tabs):
         last_index_array.append(val)
         first_index_array.append(val + 1)
 
-    # appending last timestamo from sectioned data for processing
+    # appending last timestamp from sectioned data for processing
     last_index_array.append(len(la_time) - 1)
 
     # creating empty lists to populate with calculated values
@@ -232,7 +234,7 @@ def preprocessing(checklist, tabs):
     paretic_count_final = []
     non_paretic_count_final = []
 
-    # calculating the activity counts, limb use times, and use ratios
+    # calculating the activity counts, limb use times, and use ratio
     for i in range(len(last_index_array)):
         # calling collecting_counts to calculate activity counts based on preset threshold
         la_count_mag = collecting_counts(la_raw[first_index_array[i]:last_index_array[i]])
@@ -269,6 +271,7 @@ def preprocessing(checklist, tabs):
           Input('limb-movement-target', 'value'),
 )
 def display_page(checklist_options, data, hourly_target):
+    # run this code only if there is data contained in the component with id 'filter-data'
     if data is not None:
         # initialize variables needed
         i = 0
@@ -287,15 +290,13 @@ def display_page(checklist_options, data, hourly_target):
                 non_paretic_arm_idx, paretic_arm_idx = [1,4], [0,3]
             
         # populating visualizations based on checklist options
-        # in the following order: Human Silhouette > Line Graph > Scatter Plot > Bar Graph > Box Plots
+        # in the following order: Human Silhouette > Line Graph > Scatter Plot > Bar Graph
         if 'Human Silhouette' in checklist_options:
             im = Image.open("assets/silhouette_bw.png") # open image
             width, height = im.size # get the size of the image
 
-            # TODO: is there a better algorithm for classification?
             # set color coding scheme
             severe = (255, 0, 0) # red (ARAT score 0-19 > Use Ratio 0-0.5)
-            # warning = (255, 127, 0) # orange
             moderate = (107,142,35) # olive green (ARAT score 19+ > Use Ratio 0.5+)
             
             # assign color to limbs based on severity of movement
@@ -315,14 +316,18 @@ def display_page(checklist_options, data, hourly_target):
                     if (x > 482) and (current_color != (255, 255, 255) ): # right Arm
                         im.putpixel( (x,y), color_RA) 
             
+            # Add annotations to the human silhouette to differentiate the left from the right side
             draw = ImageDraw.Draw(im)
             font = ImageFont.truetype("arial.ttf", 40, encoding="unic")
             draw.text((10, 550), u"Left", fill='#000000', font=font)
             draw.text((671, 550), u"Right", fill='#000000', font=font)
             
+            # show image and adjust image display on application
             fig = px.imshow(im)
             fig.update_layout(margin=dict(l=10, r=10, b=10, t=10), hovermode=False)
             fig.update_xaxes(showticklabels=False).update_yaxes(showticklabels=False)
+
+            # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
                     html.H4([html.Span("Severity of Arm Impairment", id="tooltip1", style={'paddingLeft': '3%'}),]),
@@ -336,15 +341,18 @@ def display_page(checklist_options, data, hourly_target):
                     dcc.Graph(figure=fig)
                 ]
             )
+
+            # update counter to display other visualizations on application
             i += 1
+
         if 'Line Graph' in checklist_options:
             
             # the line graph displays the hourly arm movement for each limb which has been calculated based on activity counts over time
             paretic_arm = data.iloc[:, paretic_arm_idx[0]]              # locating which limb is paretic
-            paretic_arm = np.floor(np.array(paretic_arm/60))            # rounding down to the nearest minute of paretic limb  time 
+            paretic_arm = np.floor(np.array(paretic_arm/60))            # rounding down to the nearest minute of paretic limb time 
             non_paretic_arm = data.iloc[:, non_paretic_arm_idx[0]]      # locating which limb is non-paretic
             non_paretic_arm = np.floor(np.array(non_paretic_arm/60))    # rounding down to the nearest minute of non-paretic limb time
-            diff = non_paretic_arm - paretic_arm                        # calculating difference in time between paretic and nonparetic limb
+            diff = non_paretic_arm - paretic_arm                        # calculating difference in time between paretic and non-paretic limb
 
             # data.shape[0] retrieves the number of rows in the dataset
             hours = list(range(1, data.shape[0]+1))
@@ -361,6 +369,7 @@ def display_page(checklist_options, data, hourly_target):
             line_graph_arm.update_xaxes(tickvals=hours, ticktext=['4', '8', '12', '16', '20', '24'])
             line_graph_arm.update_layout(xaxis_title='Hours', yaxis_title='Minutes of Movement for Every 4 Hours')
             line_graph_arm.update_traces(marker_size=14)
+
             # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
@@ -378,19 +387,21 @@ def display_page(checklist_options, data, hourly_target):
                 ]
             )
 
+            # update counter to display other visualizations on application
             i += 1
 
         if 'Scatter Plot' in checklist_options:
 
             # this scatter plot displays the use ratio between limbs over time in comparison to a lower/upper threshold
-            # blue dots represent the use ratio calculated over four hours, two red dashed lines represent an upper and lower threshold
-            # of where the use ratio is expected to be
+            # blue dots represent the use ratio calculated over four hours, two red dashed lines represent an upper 
+            # and lower threshold of where the use ratio is expected to be
             scatter_plot_arm = px.scatter(x=np.arange(1, 7), y=data['Use Ratio U'])
             scatter_plot_arm.update_traces(marker_size=20)
             scatter_plot_arm.add_hline(y=0.79, line_dash="dash", line_color="red", annotation_text="Lower threshold = 0.79")
             scatter_plot_arm.add_hline(y=1.1, line_dash="dash", line_color="red", annotation_text="Upper threshold = 1.1")
             scatter_plot_arm.update_layout(xaxis_title="Hours",  yaxis_title="Arm Use Ratio", yaxis_range=[0,2])
             scatter_plot_arm.update_xaxes(tickvals=np.arange(1, 7), ticktext=['4', '8', '12', '16', '20', '24'])
+
             # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
@@ -406,6 +417,7 @@ def display_page(checklist_options, data, hourly_target):
                 ]
             )
 
+            # update counter to display other visualizations on application
             i += 1
 
         if 'Bar Graph' in checklist_options:
@@ -418,9 +430,11 @@ def display_page(checklist_options, data, hourly_target):
             # adding both paretic and non-paretic data to bar graph
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
             go.Bar(name='Paretic', x=ind, y=paretic_arm)])
+
             # updating graph to have x-axis ticks and axis labels
             bar_graph_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
             bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
+            
             # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
@@ -437,10 +451,14 @@ def display_page(checklist_options, data, hourly_target):
                 ]
             )
 
+            # update counter to display other visualizations on application
             i += 1
 
+        # update cards based on checkbox selection(s) with visualizations stored in the variable 'graphs'
         return graphs[0], graphs[1], graphs[2], graphs[3]
     else:
+        # prevent any updates from occuring to the application if there is not 
+        # data contained in the component with id 'filter-data'
         raise PreventUpdate
 
 
