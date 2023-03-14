@@ -30,7 +30,13 @@ git clone https://github.com/alexishamrak/capstone-historical-app.git
 3. In the terminal, run the following piece of code:
 
 ```
-python historical_app.py / python3 historical_app.py
+python historical_app.py 
+```
+
+or 
+
+```
+python3 historical_app.py
 ```
 
 ## Accreditations:
