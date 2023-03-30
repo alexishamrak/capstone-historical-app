@@ -425,7 +425,9 @@ def display_page(checklist_options, data, hourly_target):
             # this graph will display the activity count between limbs as a bar graph
             paretic_arm = data.iloc[:, paretic_arm_idx[1]]          # locating which limb is paretic
             non_paretic_arm = data.iloc[:, non_paretic_arm_idx[1]]  # locating which limb is non-paretic
-            ind = np.arange(1, len(paretic_arm) + 1)                # calculating how many bars will be needed        
+            ind = np.arange(1, len(paretic_arm) + 1)                # calculating how many bars will be needed     
+
+            non_paretic_arm = non_paretic_arm * -1  # non_paretic_arm data will be negative that way the paretic/non-paretic bars are mirrored
 
             # adding both paretic and non-paretic data to bar graph
             bar_graph_arm = go.Figure(data=[go.Bar(name='Non-Paretic', x=ind, y=non_paretic_arm), 
@@ -433,8 +435,8 @@ def display_page(checklist_options, data, hourly_target):
 
             # updating graph to have x-axis ticks and axis labels
             bar_graph_arm.update_xaxes(tickvals=ind, ticktext=['4', '8', '12', '16', '20', '24'])
-            bar_graph_arm.update_layout(barmode='stack', xaxis_title="Hours",  yaxis_title="Activity Count")
-            
+            bar_graph_arm.update_layout(barmode='relative', xaxis_title="Hours",  yaxis_title="Activity Count")
+
             # adding description of graph to graph title when mouse is hovered over top
             graphs[i] = html.Div(
                 [
